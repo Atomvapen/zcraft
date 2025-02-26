@@ -13,7 +13,7 @@ cd zigCraft
 zig build run -Doptimize=ReleaseFast --release=fast
 ```
 ## controls
-LeftClick - remove blocks
-0-9 - select block
-RightClick - replace selected block
-wasd, mouse - move camera
+LeftClick - remove blocks<br>
+0-9 - select block<br>
+RightClick - replace selected block<br>
+wasd, mouse - move camera<br>
