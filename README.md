@@ -1,3 +1,4 @@
+# Currently updating to 1.14.0 so it may not work
 # zigCraft
 minecraft made in zig with [raylib](https://github.com/raysan5/raylib). <br>
 zig version: `1.13.0`
