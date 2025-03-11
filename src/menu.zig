@@ -4,31 +4,77 @@ const rl = @import("raylib");
 var buttonTexture: rl.Texture = undefined;
 var buttonHoveredTexture: rl.Texture = undefined;
 var backgroundTexture: rl.Texture = undefined;
+var backgroundImage: rl.Image = undefined;
+
+const Button = struct {
+    pos: rl.Rectangle,
+    text: [:0]const u8,
+    fontSize: i32,
+
+    pub fn init(text: [:0]const u8, fontSize: i32, pos: rl.Rectangle) Button {
+        return .{
+            .pos = pos,
+            .text = text,
+            .fontSize = fontSize,
+        };
+    }
+
+    pub fn draw(self: *const Button) void {
+        const textWidth: f32 = @as(f32, @floatFromInt(rl.measureText(self.text, self.fontSize)));
+        const textX: f32 = self.pos.x + (self.pos.width - textWidth) / 2;
+        const textY: f32 = self.pos.y + (self.pos.height - @as(f32, @floatFromInt(self.fontSize))) / 2;
+        const srcRect: rl.Rectangle = rl.Rectangle{
+            .x = 0,
+            .y = 0,
+            .width = @floatFromInt(buttonTexture.width),
+            .height = @floatFromInt(buttonTexture.height),
+        };
+
+        const hoverScale: f32 = if (self.hovered()) 1.05 else 1.0;
+        const scaledPos = rl.Rectangle{
+            .x = self.pos.x - (self.pos.width * (hoverScale - 1.0) / 2),
+            .y = self.pos.y - (self.pos.height * (hoverScale - 1.0) / 2),
+            .width = self.pos.width * hoverScale,
+            .height = self.pos.height * hoverScale,
+        };
+        rl.drawTexturePro(if (self.hovered()) buttonHoveredTexture else buttonTexture, srcRect, scaledPos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+        rl.drawText(self.text, @intFromFloat(textX), @intFromFloat(textY), self.fontSize, rl.Color.black);
+    }
+
+    fn hovered(self: *const Button) bool {
+        const mousePos = rl.getMousePosition();
+        return rl.checkCollisionPointRec(mousePos, self.pos);
+    }
+
+    fn pressed(self: *const Button) bool {
+        const mousePos = rl.getMousePosition();
+        return rl.checkCollisionPointRec(mousePos, self.pos) and rl.isMouseButtonPressed(.left);
+    }
+};
 
 pub fn init() !void {
     buttonTexture = try rl.loadTexture("assets/gui/button.png");
     buttonHoveredTexture = try rl.loadTexture("assets/gui/button_hover.png");
-    backgroundTexture = try rl.loadTexture("assets/gui/dirt.png");
+    backgroundImage = try rl.loadImage("assets/gui/dirt.png");
+    // backgroundImage = try rl.loadTexture("assets/gui/dirt.png");
+    rl.imageResize(&backgroundImage, @divFloor(rl.getScreenWidth(), 10), @divFloor(rl.getScreenHeight(), 10));
+    backgroundTexture = try rl.loadTextureFromImage(backgroundImage);
 }
 
 pub fn deinit() void {
     rl.unloadTexture(buttonTexture);
     rl.unloadTexture(buttonHoveredTexture);
     rl.unloadTexture(backgroundTexture);
+    rl.unloadImage(backgroundImage);
 }
 
 pub fn drawSettings(ctx: *Context) void {
     const screenWidth = rl.getScreenWidth();
-
-    const exitButton = rl.Rectangle{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 };
-    const backButton = rl.Rectangle{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = 400, .height = 50 };
-    const mousePos = rl.getMousePosition();
-
     rl.clearBackground(rl.Color.ray_white);
-    drawButton(mousePos, exitButton, "Exit", 20);
-    drawButton(mousePos, backButton, "Back", 20);
-    if (rl.checkCollisionPointRec(mousePos, exitButton) and rl.isMouseButtonPressed(.left)) ctx.quit = true;
-    if (rl.checkCollisionPointRec(mousePos, backButton) and rl.isMouseButtonPressed(.left)) ctx.state = .Menu;
+
+    const backButton = Button.init("Back", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 });
+    backButton.draw();
+    if (backButton.pressed()) ctx.state = .Menu;
 }
 
 fn drawMainTitle() void {
@@ -44,15 +90,7 @@ fn drawMainTitle() void {
         rl.drawText(menuTitleText, @as(i32, @intFromFloat(menuTitlePos.x)) + @as(i32, @intCast(i)), @as(i32, @intFromFloat(menuTitlePos.y)) + @as(i32, @intCast(i)), menuTitleSize, rl.Color.dark_gray);
     }
 
-    // Draw main logo text (top layer)
     rl.drawText(menuTitleText, @as(i32, @intFromFloat(menuTitlePos.x)), @as(i32, @intFromFloat(menuTitlePos.y)), menuTitleSize, rl.Color.black);
-
-    // const wave = @sin(rl.getTime() * 1.5) * 2.0;
-    // const offsetX = @as(i32, @intFromFloat(wave));
-
-    // const angle = @sin(rl.getTime()) * 5.0; // Wobble effect
-    // rl.drawTextEx(font, "Now in Zig!", rl.Vector2{ .x = screenWidth / 2, .y = 80 }, 24, 2, rl.YELLOW);
-    // rl.drawText("Now in Zig!", @intFromFloat(screenWidth / 2), @intFromFloat(80), 24, rl.Color.yellow);
 }
 
 fn drawVersionText() void {
@@ -64,58 +102,58 @@ fn drawBackground() void {
     const screenWidth = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
 
-    const tilesY: usize = @intCast(@divFloor(screenHeight, @as(i32, backgroundTexture.height)));
-    const tilesX: usize = @intCast(@divFloor(screenWidth, @as(i32, backgroundTexture.width)));
+    const tilesX: usize = @intCast(@divFloor(screenWidth, backgroundTexture.width) + 2);
+    const tilesY: usize = @intCast(@divFloor(screenHeight, backgroundTexture.height) + 2);
+
+    // Resize the texture to be smaller (scaled down)
+    const newWidth: f32 = @as(f32, @floatFromInt(@divFloor(screenWidth, @as(i32, @intCast(tilesX)))));
+    const newHeight: f32 = @as(f32, @floatFromInt(@divFloor(screenHeight, @as(i32, @intCast(tilesY)))));
 
     for (0..tilesY) |y| {
         for (0..tilesX) |x| {
-            rl.drawTexture(backgroundTexture, @as(i32, @intCast(x)) * @as(i32, @intCast(backgroundTexture.width)), @as(i32, @intCast(y)) * @as(i32, @intCast(backgroundTexture.height)), rl.Color.white);
+            rl.drawTexturePro(
+                backgroundTexture,
+                rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(backgroundTexture.width), .height = @floatFromInt(backgroundTexture.height) },
+                rl.Rectangle{ .x = @as(f32, @floatFromInt(x)) * newWidth, .y = @as(f32, @floatFromInt(y)) * newHeight, .width = newWidth, .height = newHeight },
+                rl.Vector2{ .x = 0, .y = 0 },
+                0.0,
+                rl.Color.white,
+            );
         }
     }
+}
+
+fn drawBackgroundFade() void {
+    const screenWidth = rl.getScreenWidth();
+    const screenHeight = rl.getScreenHeight();
+
+    // Create the colors for the gradient
+    const topColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }; // Transparent black at the top
+    const bottomColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }; // Opaque black at the bottom
+
+    // Draw a single large rectangle with a vertical gradient
+    rl.drawRectangleGradientV(0, 0, screenWidth, screenHeight, topColor, bottomColor);
 }
 
 pub fn drawMain(ctx: *Context) !void {
     const screenWidth = rl.getScreenWidth();
 
-    const playButton = rl.Rectangle{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 };
-    const exitButton = rl.Rectangle{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = 400, .height = 50 };
-    const settButton = rl.Rectangle{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 390, .width = 400, .height = 50 };
-    const mousePos = rl.getMousePosition();
-
     rl.clearBackground(rl.Color.ray_white);
 
     drawBackground();
+    drawBackgroundFade();
     drawMainTitle();
     drawVersionText();
 
-    drawButton(mousePos, playButton, "Play", 20);
-    drawButton(mousePos, exitButton, "Exit", 20);
-    drawButton(mousePos, settButton, "Settings", 20);
+    const playButton = Button.init("Play", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 });
+    playButton.draw();
+    if (playButton.pressed()) ctx.state = .Playing;
 
-    if (rl.checkCollisionPointRec(mousePos, settButton) and rl.isMouseButtonPressed(.left)) ctx.state = .Settings;
-    if (rl.checkCollisionPointRec(mousePos, playButton) and rl.isMouseButtonPressed(.left)) ctx.state = .Playing;
-    if (rl.checkCollisionPointRec(mousePos, exitButton) and rl.isMouseButtonPressed(.left)) ctx.quit = true;
-}
+    const settButton = Button.init("Settings", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 });
+    settButton.draw();
+    if (settButton.pressed()) ctx.state = .Settings;
 
-fn drawButton(mousePos: rl.Vector2, pos: rl.Rectangle, text: [:0]const u8, fontSize: i32) void {
-    const textWidth: f32 = @as(f32, @floatFromInt(rl.measureText(text, fontSize)));
-    const textX: f32 = pos.x + (pos.width - textWidth) / 2;
-    const textY: f32 = pos.y + (pos.height - @as(f32, @floatFromInt(fontSize))) / 2;
-    const hovering: bool = rl.checkCollisionPointRec(mousePos, pos);
-    const srcRect: rl.Rectangle = rl.Rectangle{
-        .x = 0,
-        .y = 0,
-        .width = @floatFromInt(buttonTexture.width),
-        .height = @floatFromInt(buttonTexture.height),
-    };
-
-    const hoverScale: f32 = if (hovering) 1.05 else 1.0;
-    const scaledPos = rl.Rectangle{
-        .x = pos.x - (pos.width * (hoverScale - 1.0) / 2),
-        .y = pos.y - (pos.height * (hoverScale - 1.0) / 2),
-        .width = pos.width * hoverScale,
-        .height = pos.height * hoverScale,
-    };
-    rl.drawTexturePro(if (hovering) buttonHoveredTexture else buttonTexture, srcRect, scaledPos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
-    rl.drawText(text, @intFromFloat(textX), @intFromFloat(textY), fontSize, rl.Color.black);
+    const exitButton = Button.init("Exit", 20, .{ .x = settButton.pos.x + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 });
+    exitButton.draw();
+    if (exitButton.pressed()) ctx.quit = true;
 }
