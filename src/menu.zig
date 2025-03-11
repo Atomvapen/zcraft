@@ -28,6 +28,23 @@ pub fn drawSettings(ctx: *Context) void {
     if (rl.checkCollisionPointRec(mousePos, backButton) and rl.isMouseButtonPressed(.left)) ctx.state = .Menu;
 }
 
+fn drawMainTitle() void {
+    const screenWidth = rl.getScreenWidth();
+
+    const menuTitleText = "zcraft";
+    const menuTitleSize: i32 = 60;
+    const menuTitleWidth: i32 = rl.measureText(menuTitleText, menuTitleSize);
+    const menuTitlePos = rl.Vector2{ .x = @as(f32, @floatFromInt(screenWidth - menuTitleWidth)) / 2, .y = 100 };
+    rl.drawText(menuTitleText, @intFromFloat(menuTitlePos.x), @intFromFloat(menuTitlePos.y), menuTitleSize, rl.Color.dark_gray);
+
+    for (0..6) |i| {
+        rl.drawText(menuTitleText, @as(i32, @intFromFloat(menuTitlePos.x)) + @as(i32, @intCast(i)), @as(i32, @intFromFloat(menuTitlePos.y)) + @as(i32, @intCast(i)), menuTitleSize, rl.Color.dark_gray);
+    }
+
+    // Draw main logo text (top layer)
+    rl.drawText(menuTitleText, @as(i32, @intFromFloat(menuTitlePos.x)), @as(i32, @intFromFloat(menuTitlePos.y)), menuTitleSize, rl.Color.black);
+}
+
 pub fn drawMain(ctx: *Context) !void {
     const screenWidth = rl.getScreenWidth();
 
@@ -38,10 +55,7 @@ pub fn drawMain(ctx: *Context) !void {
 
     rl.clearBackground(rl.Color.ray_white);
 
-    const menuText = "zcraft";
-    const menuTextSize: i32 = 60;
-    const menuTextWidth: i32 = rl.measureText(menuText, menuTextSize);
-    rl.drawText(menuText, @intFromFloat(@as(f32, @floatFromInt(screenWidth - menuTextWidth)) / 2), 100, menuTextSize, rl.Color.dark_gray);
+    drawMainTitle();
 
     drawButton(mousePos, playButton, "Play", 20);
     drawButton(mousePos, exitButton, "Exit", 20);

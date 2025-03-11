@@ -19,7 +19,6 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     //ray.SetTargetFPS(120);
-    // rl.disableCursor();
     rl.setExitKey(.escape);
 
     shader.init();
