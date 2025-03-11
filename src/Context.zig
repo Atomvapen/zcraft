@@ -15,6 +15,7 @@ player: *Player = undefined,
 quit: bool = false,
 state: GameState = .Menu,
 debug: bool = false,
+settings: struct { volume: f32 = 70 } = .{},
 
 pub fn create(allocator: std.mem.Allocator) !*Self {
     const context: *Self = try allocator.create(Self);

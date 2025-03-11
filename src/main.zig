@@ -4,8 +4,9 @@ const mapGen = @import("map/generation.zig");
 const renderer = @import("rendering/renderer.zig");
 const Context = @import("Context.zig");
 const rl = @import("raylib");
-
-const menu = @import("menu.zig");
+const gui = @import("gui/gui.zig");
+const mainMenu = @import("gui/main.zig");
+const settingsMenu = @import("gui/settings.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
@@ -27,8 +28,8 @@ pub fn main() !void {
 
     try mapGen.init();
 
-    try menu.init();
-    defer menu.deinit();
+    try gui.init();
+    defer gui.deinit();
 
     while (!rl.windowShouldClose() and !ctx.quit) {
         ctx.update();
@@ -37,9 +38,9 @@ pub fn main() !void {
         rl.clearBackground(rl.Color.gray);
 
         switch (ctx.state) {
-            .Menu => try menu.drawMain(ctx),
+            .Menu => try mainMenu.draw(ctx),
             .Playing => drawGame(ctx),
-            .Settings => menu.drawSettings(ctx),
+            .Settings => settingsMenu.draw(ctx),
         }
 
         if (ctx.debug) {
