@@ -20,4 +20,14 @@ pub fn build(b: *std.Build) !void {
     run_step.dependOn(&run_cmd.step);
 
     b.installArtifact(exe);
+
+    const check = b.addExecutable(.{
+        .name = "foo",
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const check_step = b.step("check", "Check if foo compiles");
+    check_step.dependOn(&check.step);
 }
