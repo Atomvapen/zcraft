@@ -1,20 +1,41 @@
-# Currently updating to 1.14.0 so it may not work
-# zigCraft
-minecraft made in zig with [raylib](https://github.com/raysan5/raylib). <br>
-zig version: `1.13.0`
+<h1 align="center">
+  <img src="/assets/icon.png" alt="zcraft" width="200"/>
+  <p align="center">zcraft</p>
+</h1>
+<p align="center">
+<a target="_blank" href="https://ziglang.org"><img src="https://img.shields.io/badge/Language-ZIG-orange"/></a> 
+<a target="_blank" href="https://github.com/Atomvapen/zvm/blob/next/LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" /></a>
+</p>
+<p align="center">
+  zcraft is a basic minecraft clone.
+</p>
 
-## example Image:
-![zigCraft](https://github.com/user-attachments/assets/78fafb30-2414-48cb-b400-28c41397bc7d)
+---
 
-## building
-install zig version `1.13.0`
-```
-git clone https://github.com/SnoopyPlayz/zigCraft.git
-cd zigCraft
-zig build run -Doptimize=ReleaseFast --release=fast
-```
-## controls
-LeftClick - remove blocks<br>
-0-9 - select block<br>
-RightClick - replace selected block<br>
-wasd, mouse - move camera<br>
+## About
+zcraft is a basic miencraft clone built exclusively with Zig.
+
+## Status
+
+The high-level ambitious plan for the project, in order:
+
+|  #  | Step                                                      | Status |
+| :-: | :-------------------------------------------------------- | :----: |
+|  1  | Basic chunk generation                                    |   ✅   |
+|  2  | Remove dependacies to forks                               |   ✅   |
+|  3  | Player movements                                          |   ❌   |
+|  4  |                                                           |   ❌   |
+|  5  |                                                           |   ❌   |
+|  6  |                                                           |   ❌   |
+|  7  |                                                           |   ❌   |
+
+## Dependencies
+
+| Name                                                      | Comment           |
+| :-------------------------------------------------------- | :---------------: |
+| [raylib-zig]                                              |                   |
+
+
+
+[Zig]:https://ziglang.org/
+[raylib-zig]:https://github.com/SnoopyPlayz/raylib-zig-fork
