@@ -86,10 +86,6 @@ fn sprint(self: *Self) !void {
 // fn crouch(self: *Self) void {}
 
 fn handleKeybindings(self: *Self) void {
-    if (rl.isKeyPressed(.f11)) {
-        rl.toggleFullscreen();
-    }
-
     if (rl.isKeyDown(.k)) {
         shader.lightCam.target.z += 0.01;
     }

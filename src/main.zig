@@ -1,10 +1,11 @@
 const std = @import("std");
 const shader = @import("rendering/shader.zig");
-const profiler = @import("profiler.zig");
 const mapGen = @import("map/generation.zig");
 const renderer = @import("rendering/renderer.zig");
 const Context = @import("Context.zig");
 const rl = @import("raylib");
+
+const menu = @import("menu.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
@@ -18,7 +19,7 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     //ray.SetTargetFPS(120);
-    rl.disableCursor();
+    // rl.disableCursor();
     rl.setExitKey(.escape);
 
     shader.init();
@@ -27,25 +28,38 @@ pub fn main() !void {
 
     try mapGen.init();
 
-    while (!rl.windowShouldClose()) {
+    while (!rl.windowShouldClose() and !ctx.quit) {
         ctx.update();
 
         rl.beginDrawing();
-
-        shader.drawShadow(ctx);
         rl.clearBackground(rl.Color.gray);
 
-        profiler.clear();
+        switch (ctx.state) {
+            .Menu => {
+                menu.draw(ctx);
+            },
+            .Playing => {
+                drawGame(ctx);
+            },
+        }
 
-        rl.beginMode3D(ctx.player.camera);
-        try renderer.render3D(ctx);
-        rl.endMode3D();
+        if (ctx.debug) {
+            drawDebug();
+        }
 
-        try renderer.render2D(ctx);
-
-        profiler.clear();
-
-        rl.drawFPS(100, 100);
         rl.endDrawing();
     }
+}
+
+fn drawDebug() void {
+    rl.drawFPS(100, 100);
+}
+
+fn drawGame(ctx: *Context) void {
+    rl.disableCursor();
+    shader.drawShadow(ctx);
+    rl.beginMode3D(ctx.player.camera);
+    try renderer.render3D(ctx);
+    rl.endMode3D();
+    try renderer.render2D(ctx);
 }

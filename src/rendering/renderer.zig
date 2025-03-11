@@ -1,13 +1,13 @@
-const profiler = @import("../profiler.zig");
+// const profiler = @import("../profiler.zig");
 const map = @import("../map/map.zig");
 const Context = @import("../Context.zig");
 const rl = @import("raylib");
 
 pub fn render3D(ctx: *Context) !void {
-    profiler.time("time");
+    // profiler.time("time");
     map.draw(ctx);
     // ctx.player.render();
-    profiler.time("time");
+    // profiler.time("time");
 }
 
 pub fn render2D(ctx: *Context) !void {
