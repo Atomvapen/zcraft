@@ -1,10 +1,19 @@
 const Context = @import("Context.zig");
 const rl = @import("raylib");
 
-pub fn draw(ctx: *Context) void {
+pub fn drawSettings(ctx: *Context) void {
+    const exitButton = rl.Rectangle{ .x = 300, .y = 320, .width = 200, .height = 50 };
+    const mousePos = rl.getMousePosition();
+
+    rl.clearBackground(rl.Color.ray_white);
+    drawButton(mousePos, exitButton, "Exit", 20);
+    if (rl.checkCollisionPointRec(mousePos, exitButton) and rl.isMouseButtonPressed(.left)) ctx.quit = true;
+}
+
+pub fn drawMain(ctx: *Context) void {
     const playButton = rl.Rectangle{ .x = 300, .y = 250, .width = 200, .height = 50 };
     const exitButton = rl.Rectangle{ .x = 300, .y = 320, .width = 200, .height = 50 };
-    const settingsButton = rl.Rectangle{ .x = 300, .y = 390, .width = 200, .height = 50 };
+    const settButton = rl.Rectangle{ .x = 300, .y = 390, .width = 200, .height = 50 };
     const mousePos = rl.getMousePosition();
 
     rl.clearBackground(rl.Color.ray_white);
@@ -13,19 +22,12 @@ pub fn draw(ctx: *Context) void {
     // Draw buttons
     drawButton(mousePos, playButton, "Play", 20);
     drawButton(mousePos, exitButton, "Exit", 20);
-    drawButton(mousePos, settingsButton, "Settings", 20);
+    drawButton(mousePos, settButton, "Settings", 20);
 
     // Check mouse click
-    if (rl.checkCollisionPointRec(mousePos, settingsButton)) {}
-
-    if (rl.checkCollisionPointRec(mousePos, playButton) and rl.isMouseButtonPressed(.left)) {
-        ctx.state = .Playing;
-    }
-
-    if (rl.checkCollisionPointRec(mousePos, exitButton) and rl.isMouseButtonPressed(.left)) {
-        // rl.closeWindow();
-        ctx.quit = true;
-    }
+    if (rl.checkCollisionPointRec(mousePos, settButton) and rl.isMouseButtonPressed(.left)) ctx.state = .Settings;
+    if (rl.checkCollisionPointRec(mousePos, playButton) and rl.isMouseButtonPressed(.left)) ctx.state = .Playing;
+    if (rl.checkCollisionPointRec(mousePos, exitButton) and rl.isMouseButtonPressed(.left)) ctx.quit = true;
 }
 
 fn drawButton(mousePos: rl.Vector2, pos: rl.Rectangle, text: [:0]const u8, fontSize: i32) void {

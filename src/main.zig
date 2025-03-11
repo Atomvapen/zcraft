@@ -35,12 +35,9 @@ pub fn main() !void {
         rl.clearBackground(rl.Color.gray);
 
         switch (ctx.state) {
-            .Menu => {
-                menu.draw(ctx);
-            },
-            .Playing => {
-                drawGame(ctx);
-            },
+            .Menu => menu.drawMain(ctx),
+            .Playing => drawGame(ctx),
+            .Settings => menu.drawSettings(ctx),
         }
 
         if (ctx.debug) {

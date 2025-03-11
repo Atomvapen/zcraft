@@ -6,7 +6,7 @@ const map = @import("map/map.zig");
 const utilities = @import("rendering/utilities.zig");
 
 const rl = @import("raylib");
-const GameState = enum { Menu, Playing };
+const GameState = enum { Menu, Playing, Settings };
 
 allocator: std.mem.Allocator,
 time: f64 = 0,
