@@ -28,6 +28,9 @@ pub fn main() !void {
 
     try mapGen.init();
 
+    try menu.init();
+    defer menu.deinit();
+
     while (!rl.windowShouldClose() and !ctx.quit) {
         ctx.update();
 
@@ -35,7 +38,7 @@ pub fn main() !void {
         rl.clearBackground(rl.Color.gray);
 
         switch (ctx.state) {
-            .Menu => menu.drawMain(ctx),
+            .Menu => try menu.drawMain(ctx),
             .Playing => drawGame(ctx),
             .Settings => menu.drawSettings(ctx),
         }
