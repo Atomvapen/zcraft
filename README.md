@@ -24,8 +24,8 @@ The high-level ambitious plan for the project, in order:
 |  1  | Basic chunk generation                                    |   ✅   |
 |  2  | Remove dependacies to forks                               |   ✅   |
 |  3  | Player movements                                          |   ❌   |
-|  4  |                                                           |   ❌   |
-|  5  |                                                           |   ❌   |
+|  4  | Basic main menu                                                          |   ✅   | 
+|  5  |  Settings menu                                                          |   ❌   |
 |  6  |                                                           |   ❌   |
 |  7  |                                                           |   ❌   |
 

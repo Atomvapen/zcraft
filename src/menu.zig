@@ -30,23 +30,23 @@ const Button = struct {
             .height = @floatFromInt(buttonTexture.height),
         };
 
-        const hoverScale: f32 = if (self.hovered()) 1.05 else 1.0;
+        const hoverScale: f32 = if (self.isHovered()) 1.05 else 1.0;
         const scaledPos = rl.Rectangle{
             .x = self.pos.x - (self.pos.width * (hoverScale - 1.0) / 2),
             .y = self.pos.y - (self.pos.height * (hoverScale - 1.0) / 2),
             .width = self.pos.width * hoverScale,
             .height = self.pos.height * hoverScale,
         };
-        rl.drawTexturePro(if (self.hovered()) buttonHoveredTexture else buttonTexture, srcRect, scaledPos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+        rl.drawTexturePro(if (self.isHovered()) buttonHoveredTexture else buttonTexture, srcRect, scaledPos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
         rl.drawText(self.text, @intFromFloat(textX), @intFromFloat(textY), self.fontSize, rl.Color.black);
     }
 
-    fn hovered(self: *const Button) bool {
+    fn isHovered(self: *const Button) bool {
         const mousePos = rl.getMousePosition();
         return rl.checkCollisionPointRec(mousePos, self.pos);
     }
 
-    fn pressed(self: *const Button) bool {
+    fn isPressed(self: *const Button) bool {
         const mousePos = rl.getMousePosition();
         return rl.checkCollisionPointRec(mousePos, self.pos) and rl.isMouseButtonPressed(.left);
     }
@@ -74,7 +74,7 @@ pub fn drawSettings(ctx: *Context) void {
 
     const backButton = Button.init("Back", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 });
     backButton.draw();
-    if (backButton.pressed()) ctx.state = .Menu;
+    if (backButton.isPressed()) ctx.state = .Menu;
 }
 
 fn drawMainTitle() void {
@@ -121,39 +121,66 @@ fn drawBackground() void {
             );
         }
     }
+    drawBackgroundFade();
 }
 
 fn drawBackgroundFade() void {
-    const screenWidth = rl.getScreenWidth();
-    const screenHeight = rl.getScreenHeight();
+    const screenWidth: i32 = rl.getScreenWidth();
+    const screenHeight: i32 = rl.getScreenHeight();
 
     // Create the colors for the gradient
-    const topColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }; // Transparent black at the top
-    const bottomColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }; // Opaque black at the bottom
+    const topColor: rl.Color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }; // Transparent black at the top
+    const bottomColor: rl.Color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }; // Opaque black at the bottom
 
     // Draw a single large rectangle with a vertical gradient
     rl.drawRectangleGradientV(0, 0, screenWidth, screenHeight, topColor, bottomColor);
 }
 
 pub fn drawMain(ctx: *Context) !void {
-    const screenWidth = rl.getScreenWidth();
+    const screenWidth: i32 = rl.getScreenWidth();
 
     rl.clearBackground(rl.Color.ray_white);
 
     drawBackground();
-    drawBackgroundFade();
     drawMainTitle();
     drawVersionText();
 
-    const playButton = Button.init("Play", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 });
+    const playButton = Button.init(
+        "Play",
+        20,
+        .{
+            .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2,
+            .y = 250,
+            .width = 400,
+            .height = 50,
+        },
+    );
     playButton.draw();
-    if (playButton.pressed()) ctx.state = .Playing;
+    if (playButton.isPressed()) ctx.state = .Playing;
 
-    const settButton = Button.init("Settings", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 });
+    const settButton = Button.init(
+        "Settings",
+        20,
+        .{
+            .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2,
+            .y = 320,
+            .width = (400 - 40) / 2,
+            .height = 50,
+        },
+    );
     settButton.draw();
-    if (settButton.pressed()) ctx.state = .Settings;
+    if (settButton.isPressed()) ctx.state = .Settings;
 
-    const exitButton = Button.init("Exit", 20, .{ .x = settButton.pos.x + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 });
+    const exitButton = Button.init(
+        "Exit",
+        20,
+        .{
+            .x = settButton.pos.x + 20 + 400 / 2,
+            .y = 320,
+            .width = (400 - 40) / 2,
+            .height = 50,
+        },
+    );
     exitButton.draw();
-    if (exitButton.pressed()) ctx.quit = true;
+    if (exitButton.isPressed()) ctx.quit = true;
 }

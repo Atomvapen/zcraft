@@ -10,3 +10,5 @@
 * [ ] Fix chunk gen lag
 * [ ] remove profiler
 * [ ] Move utiliteis fn
+* [ ] Settings menu
+* [X] Basic main menu (expand)
