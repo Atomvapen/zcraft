@@ -3,9 +3,6 @@ const Button = @import("components/Button.zig");
 const Context = @import("../Context.zig");
 const gui = @import("gui.zig");
 
-// var backgroundTexture: rl.Texture = gui.backgroundTexture;
-// var backgroundImage: rl.Image = gui.backgroundImage;
-
 fn drawMainTitle() void {
     const screenWidth = rl.getScreenWidth();
 

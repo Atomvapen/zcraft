@@ -27,6 +27,8 @@ pub fn unloadMesh(mesh: rl.Mesh) void {
         // rl.gl.rlUnloadVertexBuffer(mesh.vboId[@intCast(i)]);
         rl.gl.rlUnloadVertexBuffer(@intCast(mesh.vboId[@intCast(i)]));
     }
+
+    util.allocator.free(mesh.vboId[0..9]);
 }
 
 pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
@@ -36,7 +38,7 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
         return;
     }
     const vboid = try util.allocator.alloc(u32, 9);
-    // mesh.vboId = vboid.ptr;
+
     mesh.vboId = @as([*c]c_int, @ptrCast(vboid.ptr));
 
     mesh.vaoId = 0; // Vertex Array Object
@@ -52,55 +54,15 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
     _ = rl.gl.rlEnableVertexArray(@intCast(mesh.vaoId));
 
     // NOTE: Vertex attributes must be uploaded considering default locations points and available vertex data
-
     // Enable vertex attributes: position (shader-location = 0)
-    //const vertices = mesh.vertices;
-    //rayRL.gl.rlSetVertexAttributeI();
-    // mesh.vboId[rl.gl.rl_default_shader_attrib_location_position] = rl.gl.rlLoadVertexBuffer(verts, mesh.vertexCount * 1 * @sizeOf(u32), false);
     mesh.vboId[rl.gl.rl_default_shader_attrib_location_position] = @intCast(rl.gl.rlLoadVertexBuffer(verts, mesh.vertexCount * 1 * @sizeOf(u32), false));
-    // rl.gl.rlSetVertexAttributeI(rl.gl.rl_default_shader_attrib_location_position, 1, 0x1405, 0, 0);
     rl.gl.rlSetVertexAttribute(rl.gl.rl_default_shader_attrib_location_position, 1, @as(i32, 0x1406), false, 0, 0);
     rl.gl.rlEnableVertexAttribute(rl.gl.rl_default_shader_attrib_location_position);
 
-    // Enable vertex attributes: texcoords (shader-location = 1)
-    //    mesh.vboId[ray.RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD] = ray.rlLoadVertexBuffer(tex, mesh.vertexCount*2*@sizeOf(f32), false);
-    //    ray.rlSetVertexAttribute(ray.RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD, 2, ray.RL_FLOAT, false, 0, 0);
-    //    ray.rlEnableVertexAttribute(ray.RL_DEFAULT_SHADER_ATTRIB_LOCATION_TEXCOORD);
-
-    // WARNING: When setting default vertex attribute values, the values for each generic vertex attribute
-    // is part of current state, and it is maintained even if a different program object is used
-
-    // Default vertex attribute: normal
-    // WARNING: Default value provided to shader if location available
-    {
-        const value = [_]f32{ 1.0, 1.0, 1.0 };
-        rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_normal, &value, @intFromEnum(rl.ShaderAttribute.vec3), 3);
-        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_normal);
-    }
-
-    // Default vertex attribute: color
-    // WARNING: Default value provided to shader if location available
-    {
-        const value = [_]f32{ 1.0, 1.0, 1.0, 1.0 }; // WHITE
-        rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_color, &value, @intFromEnum(rl.ShaderAttribute.vec4), 4);
-        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_color);
-    }
-
-    // Default vertex attribute: tangent
-    // WARNING: Default value provided to shader if location available
-    {
-        const value = [_]f32{ 0.0, 0.0, 0.0, 0.0 };
-        rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_tangent, &value, @intFromEnum(rl.ShaderAttribute.vec4), 4);
-        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_tangent);
-    }
-
-    // Default vertex attribute: texcoord2
-    // WARNING: Default value provided to shader if location available
-    {
-        const value = [_]f32{ 0.0, 0.0 };
-        rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_texcoord2, &value, @intFromEnum(rl.ShaderAttribute.vec2), 2);
-        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord2);
-    }
+    if (mesh.normals == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_normal);
+    if (mesh.colors == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_color);
+    if (mesh.tangents == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_tangent);
+    if (mesh.texcoords2 == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord2);
 
     mesh.vboId[rl.gl.rl_default_shader_attrib_location_indices] = @intCast(rl.gl.rlLoadVertexBufferElement(mesh.indices, mesh.triangleCount * 3 * @sizeOf(u16), false));
 
