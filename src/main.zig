@@ -9,7 +9,7 @@ const mainMenu = @import("gui/main.zig");
 const settingsMenu = @import("gui/settings.zig");
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}).init;
+    var gpa = std.heap.DebugAllocator(.{}).init;
     const allocator: std.mem.Allocator = gpa.allocator();
     // const allocator: std.mem.Allocator = std.heap.c_allocator;
 
@@ -28,24 +28,32 @@ pub fn main() !void {
 
     try mapGen.init();
 
-    try gui.init();
+    try gui.init(ctx);
     defer gui.deinit();
 
-    while (!rl.windowShouldClose() and !ctx.quit) {
+    while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
         ctx.update();
 
         rl.beginDrawing();
         rl.clearBackground(rl.Color.gray);
 
+        if (ctx.state != ctx.prevState) {
+            gui.clear(ctx.allocator);
+            ctx.prevState = ctx.state;
+        }
+
         switch (ctx.state) {
-            .Menu => try mainMenu.draw(ctx),
-            .Playing => drawGame(ctx),
-            .Settings => settingsMenu.draw(ctx),
+            .Menu => try mainMenu.render(ctx),
+            .Playing => renderGame(ctx),
+            .Settings => try settingsMenu.render(ctx),
+            else => {},
         }
 
         if (ctx.debug) {
             drawDebug();
         }
+
+        gui.update();
 
         rl.endDrawing();
     }
@@ -55,7 +63,7 @@ fn drawDebug() void {
     rl.drawFPS(100, 100);
 }
 
-fn drawGame(ctx: *Context) void {
+fn renderGame(ctx: *Context) void {
     rl.disableCursor();
     shader.drawShadow(ctx);
     rl.beginMode3D(ctx.player.camera);

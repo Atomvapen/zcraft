@@ -6,14 +6,14 @@ const map = @import("map/map.zig");
 const utilities = @import("rendering/utilities.zig");
 
 const rl = @import("raylib");
-const GameState = enum { Menu, Playing, Settings };
+const GameState = enum { Menu, Playing, Settings, Exiting };
 
 allocator: std.mem.Allocator,
 time: f64 = 0,
 deltatime: f64 = 0,
 player: *Player = undefined,
-quit: bool = false,
 state: GameState = .Menu,
+prevState: GameState = .Menu,
 debug: bool = false,
 settings: struct { volume: f32 = 70 } = .{},
 
@@ -50,7 +50,4 @@ fn keybinds(self: *Self) void {
         .f11 => rl.toggleFullscreen(),
         else => {},
     }
-
-    // if (rl.isKeyPressed(.f1)) self.debug = !self.debug;
-    // if (rl.isKeyPressed(.f11)) rl.toggleFullscreen();
 }
