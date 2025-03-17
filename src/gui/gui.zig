@@ -7,11 +7,13 @@ pub const Callback = @import("callback.zig");
 pub const Component = union(enum) {
     const Button = @import("components/Button.zig");
     const Slider = @import("components/Slider.zig");
+    const CheckBox = @import("components/CheckBox.zig");
     //const Text = @import("");
     //const Image = @import("");
 
     button: *Button,
     slider: *Slider,
+    checkBox: *CheckBox,
     //text: *Text,
     //image: *Image,
 
@@ -19,6 +21,7 @@ pub const Component = union(enum) {
         switch (self) {
             .button => |b| b.render(),
             .slider => |s| s.render(),
+            .checkBox => |c| c.render(),
         }
     }
 
@@ -26,6 +29,7 @@ pub const Component = union(enum) {
         switch (self) {
             .button => |b| b.update(),
             .slider => |s| s.update(),
+            .checkBox => |c| c.update(),
         }
     }
 
@@ -43,21 +47,35 @@ pub const Window = struct {
 };
 
 pub const Textures = struct {
-    pub var button: rl.Texture = undefined;
-    pub var buttonHovered: rl.Texture = undefined;
     pub var backgroundTexture: rl.Texture = undefined;
     pub var backgroundImage: rl.Image = undefined;
+
+    pub var button: rl.Texture = undefined;
+    pub var buttonHovered: rl.Texture = undefined;
+
     pub var sliderThumbHovered: rl.Texture = undefined;
     pub var sliderThumb: rl.Texture = undefined;
 
+    pub var checkBox: rl.Texture = undefined;
+    pub var checkBoxHovered: rl.Texture = undefined;
+    pub var checkBoxChecked: rl.Texture = undefined;
+    pub var checkBoxCheckedHovered: rl.Texture = undefined;
+
     pub fn init() !void {
-        Textures.sliderThumbHovered = try rl.loadTexture("assets/gui/slider_thumb_hover.png");
-        Textures.sliderThumb = try rl.loadTexture("assets/gui/slider_thumb.png");
-        Textures.button = try rl.loadTexture("assets/gui/button.png");
-        Textures.buttonHovered = try rl.loadTexture("assets/gui/button_hover.png");
         Textures.backgroundImage = try rl.loadImage("assets/gui/dirt.png");
         rl.imageResize(&Textures.backgroundImage, @divFloor(rl.getScreenWidth(), 10), @divFloor(rl.getScreenHeight(), 10));
         Textures.backgroundTexture = try rl.loadTextureFromImage(Textures.backgroundImage);
+
+        Textures.sliderThumbHovered = try rl.loadTexture("assets/gui/slider_thumb_hover.png");
+        Textures.sliderThumb = try rl.loadTexture("assets/gui/slider_thumb.png");
+
+        Textures.button = try rl.loadTexture("assets/gui/button.png");
+        Textures.buttonHovered = try rl.loadTexture("assets/gui/button_hover.png");
+
+        Textures.checkBox = try rl.loadTexture("assets/gui/checkbox.png");
+        Textures.checkBoxHovered = try rl.loadTexture("assets/gui/checkbox_hovered.png");
+        Textures.checkBoxChecked = try rl.loadTexture("assets/gui/checkbox_checked.png");
+        Textures.checkBoxCheckedHovered = try rl.loadTexture("assets/gui/checkbox_checked_hovered.png");
     }
 
     pub fn deinit() void {
@@ -93,6 +111,7 @@ pub fn clear(allocator: std.mem.Allocator) void {
         switch (item) {
             .button => |b| b.destroy(allocator),
             .slider => |s| s.destroy(allocator),
+            .checkBox => |c| c.destroy(allocator),
         }
         //item.destroy(allocator);
     }
