@@ -1,7 +1,21 @@
 const rl = @import("raylib");
-const Context = @import("../Context.zig");
-const gui = @import("gui.zig");
+const Context = @import("../../Context.zig");
+const gui = @import("../gui.zig");
 const Component = gui.Component;
+
+pub fn render(ctx: *Context) !void {
+    const screenWidth: i32 = rl.getScreenWidth();
+
+    drawBackground();
+    drawTitle();
+    drawVersion();
+
+    if (gui.list.items.len == 0) {
+        try gui.list.append(Component{ .button = try .create(ctx.allocator, "Play", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
+        try gui.list.append(Component{ .button = try .create(ctx.allocator, "Settings", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .settings) });
+        try gui.list.append(Component{ .button = try .create(ctx.allocator, "Exit", 20, .center, .{ .x = ((@as(f32, @floatFromInt(screenWidth - 400))) / 2) + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .exit) });
+    }
+}
 
 fn drawTitle() void {
     const screenWidth = rl.getScreenWidth();
@@ -56,19 +70,5 @@ fn drawBackground() void {
 
         // Draw a single large rectangle with a vertical gradient
         rl.drawRectangleGradientV(0, 0, screenWidth, screenHeight, topColor, bottomColor);
-    }
-}
-
-pub fn render(ctx: *Context) !void {
-    const screenWidth: i32 = rl.getScreenWidth();
-
-    drawBackground();
-    drawTitle();
-    drawVersion();
-
-    if (gui.list.items.len == 0) {
-        try gui.list.append(Component{ .button = try .init(ctx.allocator, "Play", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
-        try gui.list.append(Component{ .button = try .init(ctx.allocator, "Settings", 20, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .settings) });
-        try gui.list.append(Component{ .button = try .init(ctx.allocator, "Exit", 20, .{ .x = ((@as(f32, @floatFromInt(screenWidth - 400))) / 2) + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .exit) });
     }
 }

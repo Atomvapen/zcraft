@@ -12,3 +12,4 @@
 * [ ] Move utiliteis fn
 * [ ] Settings menu
 * [X] Basic main menu (expand)
+    * [ ] Store texture in Button etc.

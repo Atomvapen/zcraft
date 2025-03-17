@@ -11,7 +11,7 @@ currentValue: *f32,
 thumbWidth: f32,
 isDragging: bool,
 
-pub fn init(allocator: std.mem.Allocator, pos: rl.Rectangle, minValue: f32, maxValue: f32, initialValue: *f32, thumbWidth: f32) !*Slider {
+pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, minValue: f32, maxValue: f32, initialValue: *f32, thumbWidth: f32) !*Slider {
     const slider: *Slider = try allocator.create(Slider);
 
     slider.* = .{
@@ -26,29 +26,40 @@ pub fn init(allocator: std.mem.Allocator, pos: rl.Rectangle, minValue: f32, maxV
     return slider;
 }
 
-pub fn draw(self: *Slider) void {
-    // Draw the track (the background of the slider)
-    const srcRect: rl.Rectangle = rl.Rectangle{
-        .x = 0,
-        .y = 0,
-        .width = @floatFromInt(gui.Textures.buttonTexture.width),
-        .height = @floatFromInt(gui.Textures.buttonTexture.height),
-    };
-    rl.drawTexturePro(gui.Textures.buttonTexture, srcRect, self.pos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+pub fn destroy(self: *const Slider, allocator: std.mem.Allocator) void {
+    allocator.destroy(self);
+}
 
-    // rl.drawRectangleV(.{ .x = self.pos.x, .y = self.pos.y }, rl.Vector2{ .x = self.pos.width, .y = self.pos.height }, rl.Color{ .r = 200, .g = 200, .b = 200, .a = 255 });
+pub fn render(self: *Slider) void {
+    { // Track
+        const srcRect: rl.Rectangle = rl.Rectangle{
+            .x = 0,
+            .y = 0,
+            .width = @floatFromInt(gui.Textures.button.width),
+            .height = @floatFromInt(gui.Textures.button.height),
+        };
+        rl.drawTexturePro(gui.Textures.button, srcRect, self.pos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+    }
 
-    // Calculate the thumb's position based on the current value
-    const thumbPosX: f32 = self.pos.x + (self.currentValue.* - self.minValue) / (self.maxValue - self.minValue) * self.pos.width - self.thumbWidth / 2;
+    { // Thumb
+        // Calculate the thumb's position based on the current value
+        const thumbPosX: f32 = self.pos.x + (self.currentValue.* - self.minValue) / (self.maxValue - self.minValue) * self.pos.width - self.thumbWidth / 2;
 
-    // Draw the thumb (the part that the user drags)
-    // rl.drawRectangle(@intFromFloat(thumbPosX), @intFromFloat(self.pos.y), @intFromFloat(self.thumbWidth), @intFromFloat(self.pos.height), rl.Color{ .r = 100, .g = 100, .b = 100, .a = 255 });
-    const thumb = rl.Rectangle{ .x = thumbPosX, .y = self.pos.y, .width = self.thumbWidth, .height = self.pos.height };
-    rl.drawTexturePro(if (self.isHovered()) gui.Textures.buttonHoveredTexture else gui.Textures.buttonTexture, srcRect, thumb, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+        // Draw the thumb (the part that the user drags)
+        const thumb = rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(gui.Textures.sliderThumb.width), .height = @floatFromInt(gui.Textures.sliderThumb.height) };
+        const hoverScale: f32 = if (self.isHovered()) 1.05 else 1.0;
+        const scaledPos = rl.Rectangle{ .x = thumbPosX, .y = self.pos.y - (thumb.height * (hoverScale - 1.0) / 2), .width = self.thumbWidth * hoverScale, .height = thumb.height * hoverScale };
+        rl.drawTexturePro(if (self.isHovered()) gui.Textures.sliderThumbHovered else gui.Textures.sliderThumb, thumb, scaledPos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
 
-    // Optionally, draw the current value text
-    const valueText = "Value: "; // ++ @as([]u8, @intToString(self.currentValue, 10));
-    rl.drawText(valueText, @intFromFloat(self.pos.x + 5), @intFromFloat(self.pos.y + 5), 20, rl.Color.black);
+        // Draw the current value text
+        var buffer: [20]u8 = undefined;
+        const valueText: [:0]const u8 = std.fmt.bufPrintZ(&buffer, "{d}", .{self.currentValue.*}) catch "";
+        const scaledFont: i32 = if (self.isHovered()) 15 + 3 else 15;
+        const textWidth: f32 = @as(f32, @floatFromInt(rl.measureText(valueText, scaledFont)));
+        const textX: f32 = thumbPosX + (thumb.width - textWidth) / 2;
+        const textY: f32 = self.pos.y + (thumb.height - @as(f32, @floatFromInt(scaledFont))) / 2;
+        rl.drawText(valueText, @intFromFloat(textX), @intFromFloat(textY), scaledFont, rl.Color.black);
+    }
 }
 
 pub fn update(self: *Slider) void {
@@ -72,7 +83,7 @@ pub fn update(self: *Slider) void {
         self.isDragging = false;
     }
 
-    std.debug.print("{any}\n", .{self.currentValue.*});
+    // std.debug.print("{any}\n", .{self.currentValue.*});
 }
 
 pub fn isHovered(self: *Slider) bool {

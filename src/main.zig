@@ -5,8 +5,6 @@ const renderer = @import("rendering/renderer.zig");
 const Context = @import("Context.zig");
 const rl = @import("raylib");
 const gui = @import("gui/gui.zig");
-const mainMenu = @import("gui/main.zig");
-const settingsMenu = @import("gui/settings.zig");
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
@@ -43,9 +41,9 @@ pub fn main() !void {
         }
 
         switch (ctx.state) {
-            .Menu => try mainMenu.render(ctx),
+            .Menu => try gui.Window.main.render(ctx),
             .Playing => renderGame(ctx),
-            .Settings => try settingsMenu.render(ctx),
+            .Settings => try gui.Window.settings.render(ctx),
             else => {},
         }
 
