@@ -104,12 +104,14 @@ fn handleKeybindings(self: *Self) void {
     }
 
     // Scroll wheel
-    const wheel_move = rl.getMouseWheelMove();
+    const wheel_move: f32 = rl.getMouseWheelMove();
     if (wheel_move != 0) {
-        const block_count: u8 = 9; // number of blocks (if using 1..9)
-        const wheel_move_int = @as(i32, @intFromFloat(wheel_move));
+        var direction: f32 = 1;
+        if (self.ctx.settings.reverseScrolling) direction = -1;
+        const block_count: u8 = 9;
+        const wheel_move_int: i32 = @intFromFloat(wheel_move * direction);
         self.selectedBlock = @intCast(@mod((self.selectedBlock + block_count + wheel_move_int), block_count));
-        if (self.selectedBlock == 0) self.selectedBlock = block_count; // if you want it 1-based
+        if (self.selectedBlock == 0) self.selectedBlock = block_count;
     }
 
     if (rl.isMouseButtonPressed(.right)) {

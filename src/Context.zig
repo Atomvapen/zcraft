@@ -15,7 +15,7 @@ player: *Player = undefined,
 state: GameState = .Menu,
 prevState: GameState = .Menu,
 debug: bool = false,
-settings: struct { volume: f32 = 70, safeMode: bool = true } = .{},
+settings: struct { volume: f32 = 70, reverseScrolling: bool = true } = .{},
 
 pub fn create(allocator: std.mem.Allocator) !*Self {
     const context: *Self = try allocator.create(Self);

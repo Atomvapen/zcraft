@@ -34,7 +34,7 @@ fn drawTitle(ctx: *Context) !void {
 }
 
 fn drawBackground(ctx: *Context) !void {
-    const backgroundTexture = gui.Textures.backgroundTexture;
+    const backgroundTexture = gui.Textures.dirtFlat;
     const screenWidth = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
 

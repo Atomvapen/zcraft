@@ -66,5 +66,31 @@ pub fn render(self: *Self) void {
             0,
             rl.Color.white,
         );
+
+        {
+            const iconSource = rl.Rectangle{
+                .x = 0,
+                .y = 0,
+                .width = @floatFromInt(gui.Textures.dirtFlat.width),
+                .height = @floatFromInt(gui.Textures.dirtFlat.height),
+            };
+
+            const iconScale: f32 = (scaledWidth * 0.5) / @as(f32, @floatFromInt(gui.Textures.dirtFlat.width));
+            const iconDest = rl.Rectangle{
+                .x = destRect.x + (destRect.width - (iconSource.width * iconScale)) / 2.0,
+                .y = destRect.y + (destRect.height - (iconSource.height * iconScale)) / 2.0,
+                .width = iconSource.width * iconScale,
+                .height = iconSource.height * iconScale,
+            };
+
+            rl.drawTexturePro(
+                gui.Textures.dirtFlat,
+                iconSource,
+                iconDest,
+                rl.Vector2{ .x = 0, .y = 0 },
+                0,
+                rl.Color.white,
+            );
+        }
     }
 }

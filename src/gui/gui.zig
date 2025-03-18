@@ -54,7 +54,8 @@ pub const Window = struct {
 };
 
 pub const Textures = struct {
-    pub var backgroundTexture: rl.Texture = undefined;
+    pub var dirtFlat: rl.Texture = undefined;
+    pub var grassFlat: rl.Texture = undefined;
 
     pub var button: rl.Texture = undefined;
     pub var buttonHovered: rl.Texture = undefined;
@@ -71,7 +72,8 @@ pub const Textures = struct {
     pub var slotActive: rl.Texture = undefined;
 
     pub fn init() !void {
-        Textures.backgroundTexture = try rl.loadTexture("assets/gui/dirt.png");
+        Textures.dirtFlat = try rl.loadTexture("assets/blocks/dirt_flat.png");
+        Textures.grassFlat = try rl.loadTexture("assets/blocks/grass_flat.png");
 
         Textures.sliderThumb = try rl.loadTexture("assets/gui/slider_thumb.png");
         Textures.sliderThumbHovered = try rl.loadTexture("assets/gui/slider_thumb_hover.png");
@@ -89,7 +91,8 @@ pub const Textures = struct {
     }
 
     pub fn deinit() void {
-        rl.unloadTexture(Textures.backgroundTexture);
+        rl.unloadTexture(Textures.dirtFlat);
+        rl.unloadTexture(Textures.grassFlat);
 
         rl.unloadTexture(Textures.sliderThumb);
         rl.unloadTexture(Textures.sliderThumbHovered);
