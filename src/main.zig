@@ -5,6 +5,7 @@ const renderer = @import("rendering/renderer.zig");
 const Context = @import("Context.zig");
 const rl = @import("raylib");
 const gui = @import("gui/gui.zig");
+const blocks = @import("map/blocks.zig");
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
@@ -28,10 +29,15 @@ pub fn main() !void {
     defer shader.deinit();
     shader.setShadowColor(rl.Color.white);
 
+    try blocks.init(ctx);
+    defer blocks.deinit();
+
     try mapGen.init();
 
     try gui.DrawBuffer.init(ctx);
     defer gui.DrawBuffer.deinit();
+
+    ctx.player.inventory = .{ 1, 2, 3, 4, 5, 6, 1, 2, 3 };
 
     while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
         ctx.update();

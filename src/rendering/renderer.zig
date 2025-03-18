@@ -21,6 +21,6 @@ pub fn renderUI(ctx: *Context) void {
 
 fn renderHotbar(ctx: *Context) !void {
     const hotbar = try gui.Hotbar.create(ctx.allocator, &ctx.player.selectedBlock);
-    hotbar.render();
+    hotbar.render(ctx);
     defer hotbar.destroy(ctx.allocator);
 }

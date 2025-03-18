@@ -2,9 +2,12 @@ const Self = @This();
 
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
+const blocks = @import("../../map/blocks.zig");
 const std = @import("std");
+const player = @import("../../player.zig");
+const Context = @import("../../Context.zig");
 
-const slots: i32 = 9;
+const slots: i32 = player.inventorySlots;
 
 selection: *u8,
 pos: rl.Rectangle,
@@ -24,7 +27,7 @@ pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
     allocator.destroy(self);
 }
 
-pub fn render(self: *Self) void {
+pub fn render(self: *Self, ctx: *Context) void {
     const scalar: f32 = 0.25;
 
     const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
@@ -67,15 +70,18 @@ pub fn render(self: *Self) void {
             rl.Color.white,
         );
 
-        {
+        { // Icon
+            const blockIndex = ctx.player.inventory[i - 1];
+            if (!blocks.Type.hasIcon(@intCast(blockIndex))) continue;
+
             const iconSource = rl.Rectangle{
                 .x = 0,
                 .y = 0,
-                .width = @floatFromInt(gui.Textures.dirtFlat.width),
-                .height = @floatFromInt(gui.Textures.dirtFlat.height),
+                .width = @floatFromInt(blocks.list2[blockIndex].width),
+                .height = @floatFromInt(blocks.list2[blockIndex].height),
             };
 
-            const iconScale: f32 = (scaledWidth * 0.5) / @as(f32, @floatFromInt(gui.Textures.dirtFlat.width));
+            const iconScale: f32 = (scaledWidth * 0.5) / @as(f32, @floatFromInt(blocks.list2[blockIndex].width));
             const iconDest = rl.Rectangle{
                 .x = destRect.x + (destRect.width - (iconSource.width * iconScale)) / 2.0,
                 .y = destRect.y + (destRect.height - (iconSource.height * iconScale)) / 2.0,
@@ -84,7 +90,7 @@ pub fn render(self: *Self) void {
             };
 
             rl.drawTexturePro(
-                gui.Textures.dirtFlat,
+                blocks.list2[blockIndex],
                 iconSource,
                 iconDest,
                 rl.Vector2{ .x = 0, .y = 0 },

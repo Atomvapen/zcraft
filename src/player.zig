@@ -24,6 +24,9 @@ spritning: bool = false,
 crouching: bool = false,
 speed: f32 = 0,
 
+inventory: [inventorySlots]u8 = undefined,
+pub const inventorySlots: i32 = 9;
+
 pub fn create(ctx: *Context) !*Self {
     const player: *Self = try ctx.allocator.create(Self);
 
@@ -158,7 +161,7 @@ fn handleKeybindings(self: *Self) void {
             // std.debug.print("normal: {any}\n", .{hitNormal});
             // std.debug.print("newpos: {any}\n", .{newBlockPos});
 
-            map.setBlock(newBlockPos, self.selectedBlock);
+            map.setBlock(newBlockPos, self.inventory[self.selectedBlock - 1]);
         }
     }
 
@@ -170,7 +173,7 @@ fn handleKeybindings(self: *Self) void {
 
     if (rl.isMouseButtonPressed(.middle)) {
         if (self.sendRayCameraTarget()) |hit| {
-            self.selectedBlock = map.getBlock(hit);
+            self.inventory[self.selectedBlock - 1] = map.getBlock(hit);
         }
     }
 }
