@@ -5,19 +5,20 @@ const Component = gui.Component;
 
 pub fn render(ctx: *Context) !void {
     const screenWidth: i32 = rl.getScreenWidth();
+    const screenHeight = rl.getScreenHeight();
 
-    drawBackground();
-    drawTitle();
-    drawVersion();
-
-    if (gui.list.items.len == 0) {
-        try gui.list.append(Component{ .button = try .create(ctx.allocator, "Play", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
-        try gui.list.append(Component{ .button = try .create(ctx.allocator, "Settings", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .settings) });
-        try gui.list.append(Component{ .button = try .create(ctx.allocator, "Exit", 20, .center, .{ .x = ((@as(f32, @floatFromInt(screenWidth - 400))) / 2) + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .exit) });
+    if (gui.DrawBuffer.list.items.len == 0) {
+        try drawBackground(ctx);
+        try drawTitle(ctx);
+        gui.DrawBuffer.append(Component{ .gradiant = try .create(ctx.allocator, .{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }) });
+        gui.DrawBuffer.append(Component{ .button = try .create(ctx.allocator, "Play", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
+        gui.DrawBuffer.append(Component{ .button = try .create(ctx.allocator, "Settings", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .settings) });
+        gui.DrawBuffer.append(Component{ .button = try .create(ctx.allocator, "Exit", 20, .center, .{ .x = ((@as(f32, @floatFromInt(screenWidth - 400))) / 2) + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .exit) });
+        gui.DrawBuffer.append(Component{ .label = try .create(ctx.allocator, .{ .x = 10, .y = @floatFromInt(screenHeight - 20), .width = 0, .height = 0 }, "zcraft 0.1.0", 25, .left, rl.Color.ray_white) });
     }
 }
 
-fn drawTitle() void {
+fn drawTitle(ctx: *Context) !void {
     const screenWidth = rl.getScreenWidth();
 
     const text: [:0]const u8 = "zcraft";
@@ -25,50 +26,37 @@ fn drawTitle() void {
     const width: i32 = rl.measureText(text, size);
     const pos = rl.Vector2{ .x = @as(f32, @floatFromInt(screenWidth - width)) / 2, .y = 100 };
 
-    rl.drawText(text, @intFromFloat(pos.x), @intFromFloat(pos.y), size, rl.Color.dark_gray);
-
-    for (0..6) |i| {
-        rl.drawText(text, @as(i32, @intFromFloat(pos.x)) + @as(i32, @intCast(i)), @as(i32, @intFromFloat(pos.y)) + @as(i32, @intCast(i)), size, rl.Color.dark_gray);
+    for (0..7) |i| {
+        gui.DrawBuffer.append(Component{ .label = try .create(ctx.allocator, .{ .x = pos.x + @as(f32, @floatFromInt(i)), .y = pos.y + @as(f32, @floatFromInt(i)), .width = 0, .height = 0 }, text, size, .left, rl.Color.dark_gray) });
     }
 
-    rl.drawText(text, @as(i32, @intFromFloat(pos.x)), @as(i32, @intFromFloat(pos.y)), size, rl.Color.black);
+    gui.DrawBuffer.append(Component{ .label = try .create(ctx.allocator, .{ .x = pos.x, .y = pos.y, .width = 0, .height = 0 }, text, size, .left, rl.Color.black) });
 }
 
-fn drawVersion() void {
-    const screenHeight = rl.getScreenHeight();
-    rl.drawText("zcraft 0.1.0", 10, screenHeight - 20, 20, rl.Color.gray);
-}
-
-fn drawBackground() void {
+fn drawBackground(ctx: *Context) !void {
+    const backgroundTexture = gui.Textures.backgroundTexture;
     const screenWidth = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
 
-    const tilesX: usize = @intCast(@divFloor(screenWidth, gui.Textures.backgroundTexture.width) + 2);
-    const tilesY: usize = @intCast(@divFloor(screenHeight, gui.Textures.backgroundTexture.height) + 2);
+    // Define a desired tile size for the background
+    const tileWidth: i32 = 64; // Adjust as needed (e.g., 64px for a smaller tile)
+    const tileHeight: i32 = 64; // Adjust as needed (e.g., 64px for a smaller tile)
 
-    // Resize the texture to be smaller (scaled down)
-    const newWidth: f32 = @as(f32, @floatFromInt(@divFloor(screenWidth, @as(i32, @intCast(tilesX)))));
-    const newHeight: f32 = @as(f32, @floatFromInt(@divFloor(screenHeight, @as(i32, @intCast(tilesY)))));
+    // Calculate how many tiles are needed to cover the screen in both directions
+    const tilesX: usize = @intCast(@divFloor(screenWidth, tileWidth) + 1);
+    const tilesY: usize = @intCast(@divFloor(screenHeight, tileHeight) + 1);
 
+    // Draw the tiled background with the scaled down tile size
     for (0..tilesY) |y| {
         for (0..tilesX) |x| {
-            rl.drawTexturePro(
-                gui.Textures.backgroundTexture,
-                rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(gui.Textures.backgroundTexture.width), .height = @floatFromInt(gui.Textures.backgroundTexture.height) },
-                rl.Rectangle{ .x = @as(f32, @floatFromInt(x)) * newWidth, .y = @as(f32, @floatFromInt(y)) * newHeight, .width = newWidth, .height = newHeight },
-                rl.Vector2{ .x = 0, .y = 0 },
-                0.0,
-                rl.Color.white,
-            );
+            const destRect: rl.Rectangle = rl.Rectangle{
+                .x = @as(f32, @floatFromInt(x)) * @as(f32, @floatFromInt(tileWidth)),
+                .y = @as(f32, @floatFromInt(y)) * @as(f32, @floatFromInt(tileHeight)),
+                .width = @as(f32, @floatFromInt(tileWidth)),
+                .height = @as(f32, @floatFromInt(tileHeight)),
+            };
+
+            gui.DrawBuffer.append(.{ .image = try .create(ctx.allocator, destRect, backgroundTexture) });
         }
-    }
-
-    { // Fade
-        // Create the colors for the gradient
-        const topColor: rl.Color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }; // Transparent black at the top
-        const bottomColor: rl.Color = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }; // Opaque black at the bottom
-
-        // Draw a single large rectangle with a vertical gradient
-        rl.drawRectangleGradientV(0, 0, screenWidth, screenHeight, topColor, bottomColor);
     }
 }

@@ -21,13 +21,13 @@ pub fn build(b: *std.Build) !void {
 
     b.installArtifact(exe);
 
-    const check = b.addExecutable(.{
-        .name = "foo",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
+    // const check = b.addExecutable(.{
+    //     .name = "zcraft",
+    //     .root_source_file = b.path("src/main.zig"),
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
 
-    const check_step = b.step("check", "Check if foo compiles");
-    check_step.dependOn(&check.step);
+    // const check_step = b.step("check", "Check if zcraft compiles");
+    // check_step.dependOn(&check.step);
 }

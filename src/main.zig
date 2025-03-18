@@ -17,6 +17,10 @@ pub fn main() !void {
     rl.initWindow(1280, 720, "zcraft");
     defer rl.closeWindow();
 
+    const icon = try rl.loadImage("assets/icon.png");
+    defer icon.unload();
+    icon.useAsWindowIcon();
+
     //ray.SetTargetFPS(120);
     rl.setExitKey(.escape);
 
@@ -26,8 +30,8 @@ pub fn main() !void {
 
     try mapGen.init();
 
-    try gui.init(ctx);
-    defer gui.deinit();
+    try gui.DrawBuffer.init(ctx);
+    defer gui.DrawBuffer.deinit();
 
     while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
         ctx.update();
@@ -36,7 +40,7 @@ pub fn main() !void {
         rl.clearBackground(rl.Color.gray);
 
         if (ctx.state != ctx.prevState) {
-            gui.clear(ctx.allocator);
+            gui.DrawBuffer.clear(ctx.allocator);
             ctx.prevState = ctx.state;
         }
 
@@ -51,7 +55,7 @@ pub fn main() !void {
             drawDebug();
         }
 
-        gui.update();
+        gui.DrawBuffer.update();
 
         rl.endDrawing();
     }

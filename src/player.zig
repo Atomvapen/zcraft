@@ -99,8 +99,17 @@ fn handleKeybindings(self: *Self) void {
     }
 
     //Hotbar TEMP
-    for (49..57) |key| {
+    for (49..57 + 1) |key| {
         if (rl.isKeyPressed(@enumFromInt(key))) self.selectedBlock = @intCast(key - 48);
+    }
+
+    // Scroll wheel
+    const wheel_move = rl.getMouseWheelMove();
+    if (wheel_move != 0) {
+        const block_count: u8 = 9; // number of blocks (if using 1..9)
+        const wheel_move_int = @as(i32, @intFromFloat(wheel_move));
+        self.selectedBlock = @intCast(@mod((self.selectedBlock + block_count + wheel_move_int), block_count));
+        if (self.selectedBlock == 0) self.selectedBlock = block_count; // if you want it 1-based
     }
 
     if (rl.isMouseButtonPressed(.right)) {

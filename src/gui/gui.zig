@@ -4,24 +4,34 @@ const Context = @import("../Context.zig");
 
 pub const Callback = @import("callback.zig");
 
+pub const Hotbar = @import("components/Hotbar.zig");
+pub const Crosshair = @import("components/Crosshair.zig");
+
 pub const Component = union(enum) {
     const Button = @import("components/Button.zig");
     const Slider = @import("components/Slider.zig");
     const CheckBox = @import("components/CheckBox.zig");
-    //const Text = @import("");
-    //const Image = @import("");
+    const Label = @import("components/Label.zig");
+    const Image = @import("components/Image.zig");
+    const GradiantRectangle = @import("components/RectangleGradiant.zig");
 
     button: *Button,
     slider: *Slider,
     checkBox: *CheckBox,
-    //text: *Text,
-    //image: *Image,
+    label: *Label,
+    image: *Image,
+    gradiant: *GradiantRectangle,
+    _,
 
     pub fn render(self: Component) void {
         switch (self) {
             .button => |b| b.render(),
             .slider => |s| s.render(),
             .checkBox => |c| c.render(),
+            .label => |l| l.render(),
+            .image => |i| i.render(),
+            .gradiant => |g| g.render(),
+            else => {},
         }
     }
 
@@ -30,15 +40,12 @@ pub const Component = union(enum) {
             .button => |b| b.update(),
             .slider => |s| s.update(),
             .checkBox => |c| c.update(),
+            // .label => |l| l.update(),
+            // .image => |i| i.update(),
+            // .gradiant => |g| g.update(),
+            else => {},
         }
     }
-
-    //pub fn destroy(self: Component, allocator: std.mem.Allocator) void {
-    //  switch (self) {
-    //    .button => |b| allocator.destroy(b),
-    //   .slider => |s| allocator.destroy(s),
-    //}
-    // }
 };
 
 pub const Window = struct {
@@ -48,7 +55,6 @@ pub const Window = struct {
 
 pub const Textures = struct {
     pub var backgroundTexture: rl.Texture = undefined;
-    pub var backgroundImage: rl.Image = undefined;
 
     pub var button: rl.Texture = undefined;
     pub var buttonHovered: rl.Texture = undefined;
@@ -61,13 +67,14 @@ pub const Textures = struct {
     pub var checkBoxChecked: rl.Texture = undefined;
     pub var checkBoxCheckedHovered: rl.Texture = undefined;
 
-    pub fn init() !void {
-        Textures.backgroundImage = try rl.loadImage("assets/gui/dirt.png");
-        rl.imageResize(&Textures.backgroundImage, @divFloor(rl.getScreenWidth(), 10), @divFloor(rl.getScreenHeight(), 10));
-        Textures.backgroundTexture = try rl.loadTextureFromImage(Textures.backgroundImage);
+    pub var slot: rl.Texture = undefined;
+    pub var slotActive: rl.Texture = undefined;
 
-        Textures.sliderThumbHovered = try rl.loadTexture("assets/gui/slider_thumb_hover.png");
+    pub fn init() !void {
+        Textures.backgroundTexture = try rl.loadTexture("assets/gui/dirt.png");
+
         Textures.sliderThumb = try rl.loadTexture("assets/gui/slider_thumb.png");
+        Textures.sliderThumbHovered = try rl.loadTexture("assets/gui/slider_thumb_hover.png");
 
         Textures.button = try rl.loadTexture("assets/gui/button.png");
         Textures.buttonHovered = try rl.loadTexture("assets/gui/button_hover.png");
@@ -76,45 +83,72 @@ pub const Textures = struct {
         Textures.checkBoxHovered = try rl.loadTexture("assets/gui/checkbox_hovered.png");
         Textures.checkBoxChecked = try rl.loadTexture("assets/gui/checkbox_checked.png");
         Textures.checkBoxCheckedHovered = try rl.loadTexture("assets/gui/checkbox_checked_hovered.png");
+
+        Textures.slot = try rl.loadTexture("assets/gui/hotbar.png");
+        Textures.slotActive = try rl.loadTexture("assets/gui/hotbar_active.png");
     }
 
     pub fn deinit() void {
+        rl.unloadTexture(Textures.backgroundTexture);
+
+        rl.unloadTexture(Textures.sliderThumb);
+        rl.unloadTexture(Textures.sliderThumbHovered);
+
         rl.unloadTexture(Textures.button);
         rl.unloadTexture(Textures.buttonHovered);
-        rl.unloadTexture(Textures.backgroundTexture);
-        rl.unloadImage(Textures.backgroundImage);
+
+        rl.unloadTexture(Textures.checkBox);
+        rl.unloadTexture(Textures.checkBoxHovered);
+        rl.unloadTexture(Textures.checkBoxChecked);
+        rl.unloadTexture(Textures.checkBoxCheckedHovered);
+
+        rl.unloadTexture(Textures.slot);
+        rl.unloadTexture(Textures.slotActive);
     }
 };
 
-pub var list: std.ArrayList(Component) = undefined;
+pub const DrawBuffer = struct {
+    pub var list: std.ArrayList(Component) = undefined;
 
-pub fn init(ctx: *Context) !void {
-    try Textures.init();
-    list = std.ArrayList(Component).init(ctx.allocator);
-    Callback.init(ctx);
-}
-
-pub fn deinit() void {
-    Textures.deinit();
-    list.deinit();
-}
-
-pub fn update() void {
-    for (list.items) |item| {
-        item.update();
-        item.render();
+    pub fn init(ctx: *Context) !void {
+        try Textures.init();
+        list = std.ArrayList(Component).init(ctx.allocator);
+        Callback.init(ctx);
     }
-}
 
-pub fn clear(allocator: std.mem.Allocator) void {
-    for (list.items) |item| {
-        switch (item) {
-            .button => |b| b.destroy(allocator),
-            .slider => |s| s.destroy(allocator),
-            .checkBox => |c| c.destroy(allocator),
+    pub fn deinit() void {
+        Textures.deinit();
+        list.deinit();
+    }
+
+    pub fn appendSlice(item: []const Component) void {
+        list.appendSlice(item) catch {};
+    }
+
+    pub fn append(item: Component) void {
+        list.append(item) catch {};
+    }
+
+    pub fn update() void {
+        for (list.items) |item| {
+            item.update();
+            item.render();
         }
-        //item.destroy(allocator);
     }
 
-    list.clearAndFree();
-}
+    pub fn clear(allocator: std.mem.Allocator) void {
+        for (list.items) |item| {
+            switch (item) {
+                .button => |b| b.destroy(allocator),
+                .slider => |s| s.destroy(allocator),
+                .checkBox => |c| c.destroy(allocator),
+                .label => |l| l.destroy(allocator),
+                .image => |i| i.destroy(allocator),
+                .gradiant => |g| g.destroy(allocator),
+                else => {},
+            }
+        }
+
+        list.clearRetainingCapacity();
+    }
+};

@@ -4,22 +4,23 @@ const cull = @import("../rendering/frustumCulling.zig");
 const util = @import("../rendering/utilities.zig");
 const rl = @import("raylib");
 const Context = @import("../Context.zig");
+const blocks = @import("blocks.zig");
 
 pub const chunkSize: u8 = 16;
 
-pub const BlockTypes = enum(u8) {
-    air = 0,
-    grass,
-    glass,
-    brick,
-    stone,
-    wood,
-    leaf,
+// pub const BlockTypes = enum(u8) {
+//     air = 0,
+//     grass,
+//     glass,
+//     brick,
+//     stone,
+//     wood,
+//     leaf,
 
-    pub fn toInt(self: BlockTypes) i32 {
-        return @intFromEnum(self);
-    }
-};
+//     pub fn toInt(self: BlockTypes) i32 {
+//         return @intFromEnum(self);
+//     }
+// };
 
 const Chunk = struct {
     Blocks: [chunkSize][chunkSize][chunkSize]u8,
@@ -340,7 +341,7 @@ pub fn update() void {
 }
 
 fn isTransparent(i: u8) bool {
-    return switch (@as(BlockTypes, @enumFromInt(i))) {
+    return switch (@as(blocks.Type, @enumFromInt(i))) {
         .air, .glass, .leaf => true,
         else => false,
     };
@@ -411,6 +412,8 @@ pub fn getChunkOrGen(position: rl.Vector3) *Chunk {
 
 pub fn setBlock(position: rl.Vector3, b: u8) void {
     const chunk = getChunkOrGen(toChunkPos(position));
+
+    if (!blocks.Type.valid(b)) return;
 
     // update Chunks around block that is updated
     const sides = [_]rl.Vector3{ .{ .x = 0, .y = 1, .z = 0 }, .{ .x = 0, .y = -1, .z = 0 }, .{ .x = 1, .y = 0, .z = 0 }, .{ .x = -1, .y = 0, .z = 0 }, .{ .x = 0, .y = 0, .z = 1 }, .{ .x = 0, .y = 0, .z = -1 } };
