@@ -6,6 +6,10 @@ const mapGen = @import("map/generation.zig");
 const rl = @import("raylib");
 const std = @import("std");
 const Context = @import("Context.zig");
+const Inventory = @import("player/Inventory.zig");
+const Hotbar = @import("player/Hotbar.zig");
+const gui = @import("gui/gui.zig");
+const Component = gui.Component;
 
 ctx: *Context,
 camera: rl.Camera3D = rl.Camera3D{
@@ -15,7 +19,7 @@ camera: rl.Camera3D = rl.Camera3D{
     .fovy = 90.0,
     .projection = rl.CameraProjection.perspective,
 },
-selectedBlock: u8 = 1,
+
 pos: rl.Vector3 = .{ .x = 1.0, .y = 40.0, .z = 1.0 },
 vel: rl.Vector3 = undefined,
 onGround: bool = false,
@@ -24,26 +28,27 @@ spritning: bool = false,
 crouching: bool = false,
 speed: f32 = 0,
 
-inventory: [inventorySlots]u8 = undefined,
-pub const inventorySlots: i32 = 9;
+inventory: Inventory = .{},
+hotbar: Hotbar = .{},
 
 pub fn create(ctx: *Context) !*Self {
     const player: *Self = try ctx.allocator.create(Self);
 
-    player.* = .{ .ctx = ctx };
+    player.* = .{
+        .ctx = ctx,
+    };
 
     return player;
 }
 
 pub fn destroy(self: *Self) void {
+    // self.hotbarUI.destroy(self.ctx.allocator);
     self.ctx.allocator.destroy(self);
 }
 
-pub fn update(self: *Self) void {
-    // std.debug.print("Player pos: {} Camera pos: {} Camera target: {}\n", .{ self.pos, self.camera.position, self.camera.target });
-    // self.camera.target = self.camera.position.add(rl.Vector3{ .x = 0, .y = 0, .z = 1 });
-
-    self.render();
+pub fn update(self: *Self) !void {
+    // try self.render();
+    // try self.renderUI();
     self.updateMap();
     self.handleKeybindings();
 
@@ -52,7 +57,7 @@ pub fn update(self: *Self) void {
     self.updatePos(@floatCast(self.ctx.deltatime));
 }
 
-fn render(self: *Self) void {
+pub fn render(self: *Self) !void {
     // Shadow follow player
     if (@abs((shader.lightCam.position.x + shader.lightCam.position.z) - (self.camera.position.x + self.camera.position.z)) > 50) {
         shader.lightCam.position.x = self.camera.position.x;
@@ -63,6 +68,13 @@ fn render(self: *Self) void {
 
     if (self.sendRayCameraTarget() != null) {
         rl.drawCube(sendRayCameraTarget(self).?, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
+    }
+}
+
+pub fn renderUI(self: *Self) !void {
+    if (gui.DrawBuffer.list.items.len == 0) {
+        gui.DrawBuffer.append(Component{ .hotbar = try .create(self.ctx.allocator, &self.ctx.player.hotbar.selection, self.ctx) });
+        gui.DrawBuffer.append(Component{ .crosshair = try .create(self.ctx.allocator, 10) });
     }
 }
 
@@ -82,8 +94,6 @@ fn sprint(self: *Self) !void {
         self.camera.fovy = 90;
     }
     self.stats.stamina = rl.math.clamp(self.stats.stamina, 0, 100);
-
-    // std.debug.print("{}\n", .{self.stats.stamina});
 }
 
 // fn crouch(self: *Self) void {}
@@ -103,7 +113,7 @@ fn handleKeybindings(self: *Self) void {
 
     //Hotbar TEMP
     for (49..57 + 1) |key| {
-        if (rl.isKeyPressed(@enumFromInt(key))) self.selectedBlock = @intCast(key - 48);
+        if (rl.isKeyPressed(@enumFromInt(key))) self.hotbar.selection = @intCast(key - 48);
     }
 
     // Scroll wheel
@@ -113,8 +123,8 @@ fn handleKeybindings(self: *Self) void {
         if (self.ctx.settings.reverseScrolling) direction = -1;
         const block_count: u8 = 9;
         const wheel_move_int: i32 = @intFromFloat(wheel_move * direction);
-        self.selectedBlock = @intCast(@mod((self.selectedBlock + block_count + wheel_move_int), block_count));
-        if (self.selectedBlock == 0) self.selectedBlock = block_count;
+        self.hotbar.selection = @intCast(@mod((self.hotbar.selection + block_count + wheel_move_int), block_count));
+        if (self.hotbar.selection == 0) self.hotbar.selection = block_count;
     }
 
     if (rl.isMouseButtonPressed(.right)) {
@@ -161,7 +171,7 @@ fn handleKeybindings(self: *Self) void {
             // std.debug.print("normal: {any}\n", .{hitNormal});
             // std.debug.print("newpos: {any}\n", .{newBlockPos});
 
-            map.setBlock(newBlockPos, self.inventory[self.selectedBlock - 1]);
+            map.setBlock(newBlockPos, self.hotbar.items[self.hotbar.selection]);
         }
     }
 
@@ -173,7 +183,7 @@ fn handleKeybindings(self: *Self) void {
 
     if (rl.isMouseButtonPressed(.middle)) {
         if (self.sendRayCameraTarget()) |hit| {
-            self.inventory[self.selectedBlock - 1] = map.getBlock(hit);
+            self.hotbar.items[self.hotbar.selection] = map.getBlock(hit);
         }
     }
 }

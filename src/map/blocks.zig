@@ -2,28 +2,22 @@ const rl = @import("raylib");
 const std = @import("std");
 const Context = @import("../Context.zig");
 
-pub var list: std.ArrayList(rl.Texture) = undefined;
+// pub var list: std.ArrayList(rl.Texture) = undefined;
 
-pub var list2: [9]rl.Texture = undefined;
+pub var list: [9]rl.Texture = undefined;
 
-pub fn init(ctx: *Context) !void {
+pub fn init() !void {
     const grass = try rl.loadTexture("assets/blocks/grass_flat.png");
     const dirt = try rl.loadTexture("assets/blocks/dirt_flat.png");
 
-    list = std.ArrayList(rl.Texture).init(ctx.allocator);
-
-    try list.append(grass);
-    try list.append(dirt);
-
-    list2[1] = grass;
-    list2[4] = dirt;
+    list[1] = grass;
+    list[4] = dirt;
 }
 
 pub fn deinit() void {
-    for (list.items) |item| {
-        item.unload();
+    for (0..list.len) |i| {
+        list[i].unload();
     }
-    list.deinit();
 }
 
 pub const Type = enum(u8) {

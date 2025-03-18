@@ -10,12 +10,6 @@ const Alignment = enum {
     right,
 };
 
-// const Content = struct {
-//     text: [:0]const u8 = "",
-//     size: i32 = 0,
-//     alignment: Alignment = Alignment.center,
-// };
-
 const State = enum {
     disabled,
     default,
@@ -29,7 +23,6 @@ fontSize: i32,
 action: gui.Callback.Action = undefined,
 alignment: Alignment = Alignment.center,
 state: State = .default,
-// content: ?Content = undefined,
 
 pub fn create(allocator: std.mem.Allocator, text: [:0]const u8, fontSize: i32, alignment: Alignment, pos: rl.Rectangle, action: gui.Callback.Action) !*Self {
     const button: *Self = try allocator.create(Self);

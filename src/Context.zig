@@ -34,12 +34,12 @@ pub fn destroy(self: *Self, allocator: std.mem.Allocator) void {
     allocator.destroy(self);
 }
 
-pub fn update(self: *Self) void {
+pub fn update(self: *Self) !void {
     self.keybinds();
 
     if (self.state == .Playing) {
         self.deltatime = @floatCast(rl.getFrameTime());
-        self.player.update();
+        try self.player.update();
         map.update();
     }
 }

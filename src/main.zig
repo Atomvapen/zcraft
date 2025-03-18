@@ -29,7 +29,7 @@ pub fn main() !void {
     defer shader.deinit();
     shader.setShadowColor(rl.Color.white);
 
-    try blocks.init(ctx);
+    try blocks.init();
     defer blocks.deinit();
 
     try mapGen.init();
@@ -37,10 +37,10 @@ pub fn main() !void {
     try gui.DrawBuffer.init(ctx);
     defer gui.DrawBuffer.deinit();
 
-    ctx.player.inventory = .{ 1, 2, 3, 4, 5, 6, 1, 2, 3 };
+    ctx.player.hotbar.items = .{ 1, 2, 3, 4, 5, 6, 1, 2, 3 };
 
     while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
-        ctx.update();
+        try ctx.update();
 
         rl.beginDrawing();
         rl.clearBackground(rl.Color.gray);
@@ -52,7 +52,7 @@ pub fn main() !void {
 
         switch (ctx.state) {
             .Menu => try gui.Window.main.render(ctx),
-            .Playing => renderGame(ctx),
+            .Playing => try renderGame(ctx),
             .Settings => try gui.Window.settings.render(ctx),
             else => {},
         }
@@ -71,7 +71,7 @@ fn drawDebug() void {
     rl.drawFPS(100, 100);
 }
 
-fn renderGame(ctx: *Context) void {
+fn renderGame(ctx: *Context) !void {
     rl.disableCursor();
     shader.drawShadow(ctx);
     rl.beginMode3D(ctx.player.camera);

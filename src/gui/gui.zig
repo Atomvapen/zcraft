@@ -4,9 +4,6 @@ const Context = @import("../Context.zig");
 
 pub const Callback = @import("callback.zig");
 
-pub const Hotbar = @import("components/Hotbar.zig");
-pub const Crosshair = @import("components/Crosshair.zig");
-
 pub const Component = union(enum) {
     const Button = @import("components/Button.zig");
     const Slider = @import("components/Slider.zig");
@@ -14,6 +11,8 @@ pub const Component = union(enum) {
     const Label = @import("components/Label.zig");
     const Image = @import("components/Image.zig");
     const GradiantRectangle = @import("components/RectangleGradiant.zig");
+    const Crosshair = @import("components/Crosshair.zig");
+    const Hotbar = @import("components/Hotbar.zig");
 
     button: *Button,
     slider: *Slider,
@@ -21,6 +20,8 @@ pub const Component = union(enum) {
     label: *Label,
     image: *Image,
     gradiant: *GradiantRectangle,
+    crosshair: *Crosshair,
+    hotbar: *Hotbar,
     _,
 
     pub fn render(self: Component) void {
@@ -31,6 +32,8 @@ pub const Component = union(enum) {
             .label => |l| l.render(),
             .image => |i| i.render(),
             .gradiant => |g| g.render(),
+            .crosshair => |c| c.render(),
+            .hotbar => |h| h.render(),
             else => {},
         }
     }
@@ -40,9 +43,20 @@ pub const Component = union(enum) {
             .button => |b| b.update(),
             .slider => |s| s.update(),
             .checkBox => |c| c.update(),
-            // .label => |l| l.update(),
-            // .image => |i| i.update(),
-            // .gradiant => |g| g.update(),
+            else => {},
+        }
+    }
+
+    pub fn destroy(self: Component, allocator: std.mem.Allocator) void {
+        switch (self) {
+            .button => |b| b.destroy(allocator),
+            .slider => |s| s.destroy(allocator),
+            .checkBox => |c| c.destroy(allocator),
+            .label => |l| l.destroy(allocator),
+            .image => |i| i.destroy(allocator),
+            .gradiant => |g| g.destroy(allocator),
+            .crosshair => |c| c.destroy(allocator),
+            .hotbar => |h| h.destroy(allocator),
             else => {},
         }
     }
@@ -141,15 +155,7 @@ pub const DrawBuffer = struct {
 
     pub fn clear(allocator: std.mem.Allocator) void {
         for (list.items) |item| {
-            switch (item) {
-                .button => |b| b.destroy(allocator),
-                .slider => |s| s.destroy(allocator),
-                .checkBox => |c| c.destroy(allocator),
-                .label => |l| l.destroy(allocator),
-                .image => |i| i.destroy(allocator),
-                .gradiant => |g| g.destroy(allocator),
-                else => {},
-            }
+            item.destroy(allocator);
         }
 
         list.clearRetainingCapacity();
