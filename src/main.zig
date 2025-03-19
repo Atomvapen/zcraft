@@ -23,7 +23,7 @@ pub fn main() !void {
     icon.useAsWindowIcon();
 
     //ray.SetTargetFPS(120);
-    rl.setExitKey(.escape);
+    rl.setExitKey(.f1);
 
     shader.init();
     defer shader.deinit();
@@ -37,7 +37,7 @@ pub fn main() !void {
     try gui.DrawBuffer.init(ctx);
     defer gui.DrawBuffer.deinit();
 
-    ctx.player.hotbar.items = .{ 1, 2, 3, 4, 5, 6, 1, 2, 3 };
+    ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
 
     while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
         try ctx.update();
@@ -72,6 +72,7 @@ fn drawDebug() void {
 }
 
 fn renderGame(ctx: *Context) !void {
+    ctx.generated = true;
     rl.disableCursor();
     shader.drawShadow(ctx);
     rl.beginMode3D(ctx.player.camera);

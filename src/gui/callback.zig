@@ -5,6 +5,7 @@ pub const Action = enum {
     exit,
     settings,
     menu,
+    back,
 };
 
 pub var context: *Context = undefined;
@@ -19,5 +20,9 @@ pub fn run(action: Action) void {
         .play => context.state = .Playing,
         .settings => context.state = .Settings,
         .menu => context.state = .Menu,
+        .back => context.state = switch (context.generated) {
+            true => .Playing,
+            false => .Menu,
+        },
     }
 }

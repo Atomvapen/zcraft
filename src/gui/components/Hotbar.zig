@@ -73,6 +73,7 @@ pub fn render(self: *Self) void {
 
         { // Icon
             const blockIndex = self.ctx.player.hotbar.items[i];
+            if (blockIndex == 0 or !blocks.Type.hasIcon(@intCast(blockIndex))) continue;
             if (!blocks.Type.hasIcon(@intCast(blockIndex))) continue;
 
             const iconSource = rl.Rectangle{

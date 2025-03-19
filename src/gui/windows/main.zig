@@ -8,6 +8,7 @@ pub fn render(ctx: *Context) !void {
     const screenHeight = rl.getScreenHeight();
 
     if (gui.DrawBuffer.list.items.len == 0) {
+        rl.enableCursor();
         try drawBackground(ctx);
         try drawTitle(ctx);
         gui.DrawBuffer.append(Component{ .gradiant = try .create(ctx.allocator, .{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }) });
