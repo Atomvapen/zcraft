@@ -8,42 +8,11 @@ const blocks = @import("blocks.zig");
 
 pub const chunkSize: u8 = 16;
 
-// pub const BlockTypes = enum(u8) {
-//     air = 0,
-//     grass,
-//     glass,
-//     brick,
-//     stone,
-//     wood,
-//     leaf,
-
-//     pub fn toInt(self: BlockTypes) i32 {
-//         return @intFromEnum(self);
-//     }
-// };
-
 const Chunk = struct {
     Blocks: [chunkSize][chunkSize][chunkSize]u8,
     Model: ?rl.Model = null,
     Dirty: bool = false,
     Generated: bool = false,
-
-    // Function to start async mesh generation
-    // pub fn startGenMesh(self: *Chunk, pos: rl.Vector3) !void {
-    //     // Spawn a new task to generate the mesh asynchronously
-    //     const allocator = std.heap.page_allocator;
-    //     _ = try std.Thread.spawn(.{ .allocator = allocator }, asyncGenMesh, .{ self, pos });
-    // }
-
-    // // Async function for mesh generation
-    // fn asyncGenMesh(self: *Chunk, pos: rl.Vector3) !void {
-    //     // Call the mesh generation function synchronously in a separate task
-    //     try self.genMesh(pos);
-    //     // if (result) |err| {
-    //     //     std.debug.print("Error generating mesh: {}\n", .{err});
-    //     // }
-    // }
-    // var Mutex = std.Thread.Mutex{};
 
     fn genMesh(self: *Chunk, pos: rl.Vector3) !void {
         const chunkPosWorld = rl.Vector3.scale(pos, chunkSize);
@@ -62,9 +31,7 @@ const Chunk = struct {
         for (0..chunkSize) |x| {
             for (0..chunkSize) |y| {
                 for (0..chunkSize) |z| {
-                    if (self.Blocks[x][y][z] == 0) {
-                        continue;
-                    }
+                    if (self.Blocks[x][y][z] == 0) continue;
 
                     const bc = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
                     const bw = rl.Vector3.add(chunkPosWorld, bc);
@@ -206,116 +173,6 @@ const Chunk = struct {
         model.setTexture(self.Model.?, util.loadTexture("res/sprites.png"));
         model.setShadowShader(self.Model.?);
     }
-
-    // fn genMesh(self: *Chunk, pos: rl.Vector3) !void {
-    //     const chunkPosWorld = rl.Vector3.scale(pos, chunkSize);
-
-    //     var vertList = std.ArrayList(f32).init(util.allocator);
-    //     defer vertList.deinit();
-
-    //     var indsList = std.ArrayList(u32).init(util.allocator); // Use u32 for indices
-    //     defer indsList.deinit();
-
-    //     var texList = std.ArrayList(u8).init(util.allocator);
-    //     defer texList.deinit();
-
-    //     var indsOffset: u32 = 0;
-
-    //     for (0..chunkSize) |x| {
-    //         for (0..chunkSize) |y| {
-    //             for (0..chunkSize) |z| {
-    //                 if (self.Blocks[x][y][z] == 0) {
-    //                     continue;
-    //                 }
-
-    //                 const bc = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
-    //                 const bw = rl.Vector3.add(chunkPosWorld, bc);
-
-    //                 const block = getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z }) - 1;
-    //                 const texCords = [_]u8{ block, block + 1, block + 18, block + 17 };
-
-    //                 // Handle faces similarly as you did before
-    //                 // For example: the 'up face' part can be added here
-
-    //                 // up face (example)
-    //                 if (isTransparent(getBlock(.{ .x = bw.x, .y = bw.y + 1, .z = bw.z }))) {
-    //                     const vert = [_]f32{ bc.x, bc.y + 1, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 };
-    //                     const inds = [_]u32{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
-
-    //                     vertList.appendSlice(&vert) catch {};
-    //                     indsList.appendSlice(&inds) catch {};
-    //                     texList.appendSlice(&texCords) catch {};
-    //                     indsOffset += 4;
-    //                 }
-    //                 // Similarly, handle other faces (down, left, right, etc.)
-    //             }
-    //         }
-    //     }
-
-    //     if (vertList.items.len == 0) { // emptyChunk
-    //         if (self.Model != null) {
-    //             model.unloadMesh(self.Model.?.meshes[0]);
-    //             self.Model = null;
-    //         }
-    //         return;
-    //     }
-
-    //     if (self.Model != null) {
-    //         model.unloadMesh(self.Model.?.meshes[0]);
-    //     }
-
-    //     var mesh = rl.Mesh{
-    //         .triangleCount = @intCast(vertList.items.len / 6),
-    //         .vertexCount = @intCast(vertList.items.len / 3),
-    //         .indices = null, // We will set this later
-    //         .vertices = null,
-    //         .texcoords = null,
-    //         .texcoords2 = null,
-    //         .normals = null,
-    //         .tangents = null,
-    //         .colors = null,
-    //         .animVertices = null,
-    //         .animNormals = null,
-    //         .boneIds = null,
-    //         .boneWeights = null,
-    //         .boneMatrices = null,
-    //         .boneCount = 0,
-    //         .vaoId = 0,
-    //         .vboId = null,
-    //     };
-
-    //     // Allocate memory for indices and texcoords
-    //     var indices = try util.allocator.alloc(u32, indsList.items.len);
-    //     defer util.allocator.free(indices);
-
-    //     var texCoords = try util.allocator.alloc(u8, texList.items.len);
-    //     defer util.allocator.free(texCoords);
-
-    //     // Copy indices data into mesh
-    //     for (0..indsList.items.len) |e| indices[e] = indsList.items[e];
-
-    //     // Copy texcoord data into mesh
-    //     for (0..texList.items.len) |e| texCoords[e] = texList.items[e];
-
-    //     // Now load the vertex data
-    //     var vertices = try util.allocator.alloc(f32, vertList.items.len);
-    //     defer util.allocator.free(vertices);
-
-    //     for (0..vertList.items.len) |e| vertices[e] = vertList.items[e];
-
-    //     // Set the mesh data
-    //     mesh.indices = @ptrCast(indices.ptr);
-    //     mesh.vertices = vertices.ptr;
-    //     mesh.texcoords = @alignCast(@ptrCast(texCoords.ptr));
-
-    //     // Upload mesh data to VRAM
-    //     try model.UploadMesh(&mesh, vertices.ptr);
-
-    //     self.Model = try rl.loadModelFromMesh(mesh);
-    //     model.setTexture(self.Model.?, util.loadTexture("res/sprites.png"));
-    //     model.setShadowShader(self.Model.?);
-    // }
-
 };
 
 pub var map = std.AutoHashMap(u96, Chunk).init(util.allocator);
@@ -413,6 +270,15 @@ pub fn getChunkOrGen(position: rl.Vector3) *Chunk {
 pub fn setBlock(position: rl.Vector3, b: u8) void {
     const chunk = getChunkOrGen(toChunkPos(position));
 
+    const x: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.x)), chunkSize));
+    const y: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.y)), chunkSize));
+    const z: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.z)), chunkSize));
+
+    chunk.*.Blocks[x][y][z] = b;
+    chunk.*.Dirty = true;
+}
+
+pub fn setBlockUpdate(position: rl.Vector3, b: u8) void {
     if (!blocks.Type.valid(b)) return;
 
     // update Chunks around block that is updated
@@ -423,12 +289,7 @@ pub fn setBlock(position: rl.Vector3, b: u8) void {
         }
     }
 
-    const x: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.x)), chunkSize));
-    const y: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.y)), chunkSize));
-    const z: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.z)), chunkSize));
-
-    chunk.*.Blocks[x][y][z] = b;
-    chunk.*.Dirty = true;
+    setBlock(position, b);
 }
 
 const emptyChunk = undefined;

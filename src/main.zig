@@ -1,6 +1,6 @@
 const std = @import("std");
 const shader = @import("rendering/shader.zig");
-const mapGen = @import("map/generation.zig");
+// const mapGen = @import("map/generation.zig");
 const renderer = @import("rendering/renderer.zig");
 const Context = @import("Context.zig");
 const rl = @import("raylib");
@@ -27,12 +27,9 @@ pub fn main() !void {
 
     shader.init();
     defer shader.deinit();
-    shader.setShadowColor(rl.Color.white);
 
     try blocks.init();
     defer blocks.deinit();
-
-    try mapGen.init();
 
     try gui.DrawBuffer.init(ctx);
     defer gui.DrawBuffer.deinit();

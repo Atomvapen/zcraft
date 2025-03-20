@@ -45,6 +45,9 @@ pub fn init() void {
     var lightDir = rl.Vector3.normalize(rl.Vector3{ .x = lightCam.target.x - lightCam.position.x, .y = -1.0, .z = lightCam.target.z - lightCam.position.z });
     const lightDirLoc = rl.getShaderLocation(shadowShader, "lightDir");
     rl.setShaderValue(shadowShader, lightDirLoc, &lightDir, .vec3);
+
+    // Default shadow color
+    setShadowColor(rl.Color.white);
 }
 
 pub fn drawShadow(ctx: *Context) void {

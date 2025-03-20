@@ -28,7 +28,7 @@ pub const Player = struct {
         // speed: f32 = 0,
         health: i32 = 100,
     } = .{},
-    movementState: enum { default, crouching, sprinting, swimming, flying },
+    // movementState: enum { default, crouching, sprinting, swimming, flying },
     spritning: bool = false,
     crouching: bool = false,
     speed: f32 = 0,
@@ -246,13 +246,13 @@ pub const Player = struct {
             // std.debug.print("normal: {any}\n", .{hitNormal});
             // std.debug.print("newpos: {any}\n", .{newBlockPos});
 
-            map.setBlock(newBlockPos, self.hotbar.items[self.hotbar.selection]);
+            map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
         }
     }
 
     pub fn breakBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            map.setBlock(hit, 0);
+            map.setBlockUpdate(hit, 0);
         }
     }
 

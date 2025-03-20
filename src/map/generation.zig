@@ -1,22 +1,19 @@
 const std = @import("std");
 const map = @import("map.zig");
 const rl = @import("raylib");
+const blocks = @import("blocks.zig");
 
 pub fn generate(position: rl.Vector3) void {
-    if (map.getChunk(position) != null) {
-        if (map.getChunk(position).?.Generated == true) {
-            //print("already Generated {} \n", .{position});
-            return;
-        } else {
-            map.getChunk(position).?.Generated = true;
-        }
-    }
+    if (map.getChunk(position)) |c| if (c.Generated == true) return;
 
     const pos = map.toWorldPos(position);
-
     const size = map.chunkSize;
+
     const image = rl.genImagePerlinNoise(size, size, @intFromFloat(pos.x), @intFromFloat(pos.z), 0.1);
+    defer image.unload();
+
     const image2 = rl.genImagePerlinNoise(size, size, @intFromFloat(pos.x), @intFromFloat(pos.z), 2);
+    defer image2.unload();
 
     const colors = rl.loadImageColors(image) catch unreachable;
     const colors2 = rl.loadImageColors(image2) catch unreachable;
@@ -42,9 +39,15 @@ pub fn generate(position: rl.Vector3) void {
             const setBlockPos = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(height), .z = @floatFromInt(z) };
 
             for (0..@intCast(height)) |h| {
-                map.setBlock(.{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height - @as(i32, @intCast(h))), .z = setBlockPos.z + pos.z }, 4);
+                map.setBlock(
+                    .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height - @as(i32, @intCast(h))), .z = setBlockPos.z + pos.z },
+                    @intCast(blocks.Type.stone.toInt()),
+                );
             }
-            map.setBlock(.{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z }, 1);
+            map.setBlock(
+                .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z },
+                @intCast(blocks.Type.grass.toInt()),
+            );
 
             if (rl.getRandomValue(0, 100) == 1) {
                 createTree(.{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z });
@@ -53,14 +56,6 @@ pub fn generate(position: rl.Vector3) void {
     }
 
     map.getChunk(position).?.Generated = true;
-}
-
-pub fn init() !void {
-    for (0..2) |i| {
-        for (0..2) |y| {
-            generate(rl.Vector3{ .x = @floatFromInt(i), .y = 0, .z = @floatFromInt(y) });
-        }
-    }
 }
 
 pub fn createTree(position: rl.Vector3) void {
@@ -72,13 +67,19 @@ pub fn createTree(position: rl.Vector3) void {
             const y: f32 = @floatFromInt(t);
             for (0..3) |q| {
                 const z: f32 = @floatFromInt(q);
-                map.setBlock(.{ .x = position.x + x - 1, .y = position.y + 4 + y, .z = position.z + z - 1 }, 6);
+                map.setBlock(
+                    .{ .x = position.x + x - 1, .y = position.y + 4 + y, .z = position.z + z - 1 },
+                    @intCast(blocks.Type.leaf.toInt()),
+                );
             }
         }
     }
 
     for (0..5) |i| {
         const h: f32 = @floatFromInt(i);
-        map.setBlock(.{ .x = position.x, .y = position.y + h, .z = position.z }, 5);
+        map.setBlock(
+            .{ .x = position.x, .y = position.y + h, .z = position.z },
+            @intCast(blocks.Type.wood.toInt()),
+        );
     }
 }

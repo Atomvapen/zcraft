@@ -72,18 +72,20 @@ pub fn render(self: *Self) void {
         );
 
         { // Icon
+
             const blockIndex = self.ctx.player.hotbar.items[i];
-            if (blockIndex == 0 or !blocks.Type.hasIcon(@intCast(blockIndex))) continue;
-            if (!blocks.Type.hasIcon(@intCast(blockIndex))) continue;
+            const block = blocks.Block.fromInt(blockIndex);
+            if (@intFromEnum(block.id) == 0) continue;
+            const texture = block.getTexture() catch continue;
 
             const iconSource = rl.Rectangle{
                 .x = 0,
                 .y = 0,
-                .width = @floatFromInt(blocks.list[blockIndex].width),
-                .height = @floatFromInt(blocks.list[blockIndex].height),
+                .width = @floatFromInt(texture.width),
+                .height = @floatFromInt(texture.height),
             };
 
-            const iconScale: f32 = (scaledWidth * 0.5) / @as(f32, @floatFromInt(blocks.list[blockIndex].width));
+            const iconScale: f32 = (scaledWidth * 0.5) / @as(f32, @floatFromInt(texture.height));
             const iconDest = rl.Rectangle{
                 .x = destRect.x + (destRect.width - (iconSource.width * iconScale)) / 2.0,
                 .y = destRect.y + (destRect.height - (iconSource.height * iconScale)) / 2.0,
@@ -92,7 +94,7 @@ pub fn render(self: *Self) void {
             };
 
             rl.drawTexturePro(
-                blocks.list[blockIndex],
+                texture.*,
                 iconSource,
                 iconDest,
                 rl.Vector2{ .x = 0, .y = 0 },
