@@ -37,23 +37,27 @@ pub fn init(ctx: *Context) !void {
 
 pub fn deinit() void {
     for (0..icon.len) |i| {
-        icon[i].unload();
+        if (icon[i].id != 0) {
+            icon[i].unload();
+        }
     }
 }
 
-const maxBlockCount: usize = 9; // 255= 8 bit limit
+const maxBlockType = u8;
+const maxBlockCount: usize = std.math.maxInt(maxBlockType); // 255= 8 bit limit
 
 // var id: [maxBlockCount]u8 = undefined;
 var transparent: [maxBlockCount]bool = undefined;
 var solid: [maxBlockCount]bool = undefined;
 var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
 var icon: [maxBlockCount]rl.Texture2D = undefined;
-var texture: [maxBlockCount]rl.Texture = undefined;
+// var texture: [maxBlockCount]rl.Texture = undefined;
 
 pub const Block = struct {
-    pub const ID = enum(u64) { air, grass, glass, brick, stone, wood, leaf, _ };
+    pub const ID = enum(maxBlockType) { air, grass, glass, brick, stone, wood, leaf, _ };
 
     id: ID = @enumFromInt(0),
+    // data: Data = .{},
 
     pub inline fn toInt(self: Block) i32 {
         return @intFromEnum(self.id);
@@ -61,6 +65,10 @@ pub const Block = struct {
 
     pub inline fn fromInt(b: u8) Block {
         return Block{ .id = @enumFromInt(b) };
+    }
+
+    pub inline fn toId(self: Block) ID {
+        return self.id;
     }
 
     pub inline fn fromId(id: ID) Block {

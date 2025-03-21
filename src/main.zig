@@ -1,6 +1,5 @@
 const std = @import("std");
 const shader = @import("rendering/shader.zig");
-// const mapGen = @import("map/generation.zig");
 const renderer = @import("rendering/renderer.zig");
 const Context = @import("Context.zig");
 const rl = @import("raylib");

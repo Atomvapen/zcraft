@@ -1,7 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const map = @import("../map/map.zig");
-const mapGen = @import("../map/generation.zig");
+// const mapGen = @import("../map/generation.zig");
 const Context = @import("../Context.zig");
 const shader = @import("../rendering/shader.zig");
 const gui = @import("../gui/gui.zig");
@@ -80,19 +80,12 @@ pub const Player = struct {
 
     fn updateMap(self: *Player, ctx: *Context) void {
         const chunkPos = map.toChunkPos(.{ .x = self.camera.position.x, .y = 0, .z = self.camera.position.z });
-        const chunk = map.Map.getChunk(chunkPos);
-
-        if (chunk) |c| {
-            if (!c.Generated) mapGen.generate(chunkPos);
-        } else {
-            mapGen.generate(chunkPos);
-        }
 
         // const renderDistance: i32 = 5;
         const renderDistance: i32 = @intFromFloat(ctx.settings.renderDistance);
         for (0..@intCast(renderDistance)) |i| {
             for (0..@intCast(renderDistance)) |y| {
-                mapGen.generate(.{
+                map.Generate.generate(.{
                     .x = @floatFromInt(@as(i32, @intFromFloat(chunkPos.x)) + @as(i32, @intCast(i)) - @divTrunc(renderDistance, 2)),
                     .y = 0,
                     .z = @floatFromInt(@as(i32, @intFromFloat(chunkPos.z)) + @as(i32, @intCast(y)) - @divTrunc(renderDistance, 2)),
@@ -220,32 +213,11 @@ pub const Player = struct {
             const hitPos: rl.Vector3 = hit[0]; // Block position
             const hitNormal: rl.Vector3 = hit[1]; // Correct face normal
 
-            // Compute new block position correctly
-            // const newBlockPos: rl.Vector3 = rl.Vector3{
-            //     .x = hitPos.x + hitNormal.x,
-            //     .y = hitPos.y + hitNormal.y,
-            //     .z = hitPos.z + hitNormal.z,
-            // };
             const newBlockPos: rl.Vector3 = .{
                 .x = @round(hitPos.x + hitNormal.x),
                 .y = @round(hitPos.y + hitNormal.y),
                 .z = @round(hitPos.z + hitNormal.z),
             };
-            // const newBlockPos: rl.Vector3 = if (hitNormal.x != 0)
-            //     if (hitNormal.x > 0) rl.Vector3{ .x = hitPos.x - 1, .y = hitPos.y, .z = hitPos.z } else rl.Vector3{ .x = hitPos.x + 1, .y = hitPos.y, .z = hitPos.z }
-            // else if (hitNormal.y != 0)
-            //     if (hitNormal.y > 0) rl.Vector3{ .x = hitPos.x, .y = hitPos.y + 1, .z = hitPos.z } // Place above for top face
-            //     else rl.Vector3{ .x = hitPos.x, .y = hitPos.y - 1, .z = hitPos.z } // Place below for bottom face
-            // else if (hitNormal.z != 0)
-            //     if (hitNormal.z > 0) rl.Vector3{ .x = hitPos.x, .y = hitPos.y, .z = hitPos.z + 1 } else rl.Vector3{ .x = hitPos.x, .y = hitPos.y, .z = hitPos.z - 1 }
-            // else
-            //     hitPos; // Fallback
-
-            // std.debug.print("Hit: {any}, Normal: {any}, NewPos: {any}\n", rl.Vector3{ hitPos, hitNormal, newBlockPos });
-
-            // std.debug.print("pos: {any}\n", .{hitPos});
-            // std.debug.print("normal: {any}\n", .{hitNormal});
-            // std.debug.print("newpos: {any}\n", .{newBlockPos});
 
             map.Map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
         }
@@ -254,12 +226,15 @@ pub const Player = struct {
     pub fn breakBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
             map.Map.setBlockUpdate(hit, 0);
+            // if (map.Map.getChunkRelativePos(hit)) |c| c.setBlockUpdate(hit, 0);
         }
     }
 
     pub fn getBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            self.hotbar.items[self.hotbar.selection] = map.Map.getBlock(hit);
+            // self.hotbar.items[self.hotbar.selection] = map.Map.getBlock(hit);
+            if (map.Map.getChunkRelativePos(hit)) |c| self.hotbar.items[self.hotbar.selection] = c.getChunkBlock(hit);
+            // self.hotbar.items[self.hotbar.selection] = map.Map.getChunkRelativePos(hit).?.getChunkBlock(hit);
         }
     }
 
