@@ -1,4 +1,4 @@
-const map = @import("../map/map.zig");
+const map = @import("../map/map.zig").Map;
 const Context = @import("../Context.zig");
 const gui = @import("../gui/gui.zig");
 const rl = @import("raylib");

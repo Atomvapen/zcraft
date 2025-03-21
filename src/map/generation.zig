@@ -4,7 +4,7 @@ const rl = @import("raylib");
 const blocks = @import("blocks.zig");
 
 pub fn generate(position: rl.Vector3) void {
-    if (map.getChunk(position)) |c| if (c.Generated == true) return;
+    if (map.Map.getChunk(position)) |c| if (c.Generated == true) return;
 
     const pos = map.toWorldPos(position);
     const size = map.chunkSize;
@@ -39,14 +39,14 @@ pub fn generate(position: rl.Vector3) void {
             const setBlockPos = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(height), .z = @floatFromInt(z) };
 
             for (0..@intCast(height)) |h| {
-                map.setBlock(
+                map.Map.setBlock(
                     .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height - @as(i32, @intCast(h))), .z = setBlockPos.z + pos.z },
-                    @intCast(blocks.Type.stone.toInt()),
+                    @intCast(@intFromEnum(blocks.Block.ID.stone)),
                 );
             }
-            map.setBlock(
+            map.Map.setBlock(
                 .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z },
-                @intCast(blocks.Type.grass.toInt()),
+                @intCast(@intFromEnum(blocks.Block.ID.grass)),
             );
 
             if (rl.getRandomValue(0, 100) == 1) {
@@ -55,11 +55,11 @@ pub fn generate(position: rl.Vector3) void {
         }
     }
 
-    map.getChunk(position).?.Generated = true;
+    map.Map.getChunk(position).?.Generated = true;
 }
 
 pub fn createTree(position: rl.Vector3) void {
-    map.setBlock(position, 1);
+    map.Map.setBlock(position, 1);
 
     for (0..3) |i| {
         const x: f32 = @floatFromInt(i);
@@ -67,9 +67,9 @@ pub fn createTree(position: rl.Vector3) void {
             const y: f32 = @floatFromInt(t);
             for (0..3) |q| {
                 const z: f32 = @floatFromInt(q);
-                map.setBlock(
+                map.Map.setBlock(
                     .{ .x = position.x + x - 1, .y = position.y + 4 + y, .z = position.z + z - 1 },
-                    @intCast(blocks.Type.leaf.toInt()),
+                    @intCast(@intFromEnum(blocks.Block.ID.leaf)),
                 );
             }
         }
@@ -77,9 +77,9 @@ pub fn createTree(position: rl.Vector3) void {
 
     for (0..5) |i| {
         const h: f32 = @floatFromInt(i);
-        map.setBlock(
+        map.Map.setBlock(
             .{ .x = position.x, .y = position.y + h, .z = position.z },
-            @intCast(blocks.Type.wood.toInt()),
+            @intCast(@intFromEnum(blocks.Block.ID.wood)),
         );
     }
 }

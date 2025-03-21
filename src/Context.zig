@@ -15,7 +15,7 @@ player: *Player = undefined,
 state: GameState = .Menu,
 prevState: GameState = .Menu,
 debug: bool = false,
-settings: struct { volume: f32 = 70, reverseScrolling: bool = true } = .{},
+settings: struct { volume: f32 = 70, reverseScrolling: bool = true, renderDistance: f32 = 5 } = .{},
 generated: bool = false,
 
 pub fn create(allocator: std.mem.Allocator) !*Self {
@@ -41,7 +41,7 @@ pub fn update(self: *Self) !void {
     if (self.state == .Playing) {
         self.deltatime = @floatCast(rl.getFrameTime());
         try self.player.update(self);
-        map.update();
+        map.Map.update();
     }
 }
 

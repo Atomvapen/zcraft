@@ -1,90 +1,70 @@
 const rl = @import("raylib");
-// const std = @import("std");
+const std = @import("std");
+const Context = @import("../Context.zig");
 
-pub fn init() !void {
-    const grass = try rl.loadTexture("assets/blocks/grass_flat.png");
-    const dirt = try rl.loadTexture("assets/blocks/dirt_flat.png");
+pub fn init(ctx: *Context) !void {
+    const BlockDef = struct {
+        id: Block.ID,
+        // name: []const u8 ,
+        icon_path: []const u8,
+        // texture_path: []const u8,
+        transparent: bool,
+        collision: bool,
+    };
 
-    textures[1] = grass;
-    textures[4] = dirt;
+    const BlocksData = struct {
+        blocks: []const BlockDef,
+    };
+
+    const file_data = try std.fs.cwd().readFileAlloc(ctx.allocator, "src/map/blocks.zig.zon", 10 * 1024);
+    defer ctx.allocator.free(file_data);
+
+    const file_dataZ: [:0]u8 = try ctx.allocator.dupeZ(u8, file_data);
+    defer ctx.allocator.free(file_dataZ);
+
+    const parsed: BlocksData = try std.zon.parse.fromSlice(BlocksData, ctx.allocator, file_dataZ, null, .{ .ignore_unknown_fields = true });
+
+    for (parsed.blocks, 0..) |def, i| {
+        if (def.icon_path.len > 0) {
+            const icon_pathZ = try ctx.allocator.dupeZ(u8, def.icon_path);
+            defer ctx.allocator.free(icon_pathZ);
+            icon[i] = try rl.loadTexture(icon_pathZ);
+        }
+        transparent[i] = def.transparent;
+        collision[i] = def.collision;
+    }
 }
 
 pub fn deinit() void {
-    for (0..textures.len) |i| {
-        textures[i].unload();
+    for (0..icon.len) |i| {
+        icon[i].unload();
     }
 }
 
-pub const Type = enum(u8) {
-    air = 0,
-    grass,
-    glass,
-    brick,
-    stone,
-    wood,
-    leaf,
-    _,
-
-    pub fn hasTexture(b: u8) bool { //TEMP
-        return b == 1 or b == 4;
-    }
-
-    pub fn getTexture(b: u8) rl.Texture {
-        return textures[b];
-    }
-
-    pub fn toInt(self: Type) i32 {
-        return @intFromEnum(self);
-    }
-
-    pub fn toType(b: u8) Type {
-        return @enumFromInt(b);
-    }
-
-    pub fn transparent(b: u8) bool {
-        return switch (@as(Type, @enumFromInt(b))) {
-            .air, .glass, .leaf => true,
-            else => false,
-        };
-    }
-
-    pub fn solid(b: u8) bool {
-        return switch (@as(Type, @enumFromInt(b))) {
-            .air => false,
-            else => true,
-        };
-    }
-
-    pub fn valid(b: u8) bool {
-        const field_count = @typeInfo(Type).@"enum".fields.len;
-        return b < field_count;
-    }
-};
-
 const maxBlockCount: usize = 9; // 255= 8 bit limit
 
+// var id: [maxBlockCount]u8 = undefined;
 var transparent: [maxBlockCount]bool = undefined;
 var solid: [maxBlockCount]bool = undefined;
-var collision: [maxBlockCount]bool = undefined;
-var textures: [maxBlockCount]rl.Texture = undefined;
+var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
+var icon: [maxBlockCount]rl.Texture2D = undefined;
+var texture: [maxBlockCount]rl.Texture = undefined;
 
 pub const Block = struct {
     pub const ID = enum(u64) { air, grass, glass, brick, stone, wood, leaf, _ };
 
     id: ID = @enumFromInt(0),
-    // type: Type,
-    // texture: *rl.Texture,
 
-    // collision: bool,
-    // transparent: bool,
-    // solid: bool,
-
-    pub fn toInt(self: Block) i32 {
-        return @intFromEnum(self.type);
+    pub inline fn toInt(self: Block) i32 {
+        return @intFromEnum(self.id);
     }
 
-    pub fn fromInt(b: u8) Block {
+    pub inline fn fromInt(b: u8) Block {
         return Block{ .id = @enumFromInt(b) };
+    }
+
+    pub inline fn fromId(id: ID) Block {
+        return Block{ .id = id };
     }
 
     pub inline fn isTransparent(self: Block) bool {
@@ -96,7 +76,12 @@ pub const Block = struct {
     }
 
     pub inline fn getTexture(self: Block) !*rl.Texture {
-        if (textures[@intFromEnum(self.id)].id == 0) return error.LoadImage;
-        return &textures[@intFromEnum(self.id)];
+        if (icon[@intFromEnum(self.id)].id == 0) return error.LoadImage;
+        return &icon[@intFromEnum(self.id)];
+    }
+
+    pub inline fn valid(b: u8) bool {
+        const field_count = @typeInfo(ID).@"enum".fields.len;
+        return b < field_count;
     }
 };

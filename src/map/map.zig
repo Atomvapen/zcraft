@@ -8,6 +8,10 @@ const blocks = @import("blocks.zig");
 
 pub const chunkSize: u8 = 16;
 
+fn isTransparent(i: u8) bool {
+    return blocks.Block.fromInt(i).isTransparent();
+}
+
 const Chunk = struct {
     Blocks: [chunkSize][chunkSize][chunkSize]u8,
     Model: ?rl.Model = null,
@@ -39,11 +43,12 @@ const Chunk = struct {
                     //const tSize = 1;//1.0 / 16.0; //tile size
                     //const xt = tSize * @as(f32, @floatFromInt(getBlock(.{bw.x, bw.y, bw.z}) - 1));
                     //const texCords = [_]f32{ xt, 0.0, tSize + xt, 0.0, tSize + xt, tSize, 0.0 + xt, tSize };
-                    const block = getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z }) - 1;
+                    const block = Map.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z }) - 1;
                     const texCords = [_]u8{ block, block + 1, block + 18, block + 17 };
 
                     // up face
-                    if (isTransparent(getBlock(.{ .x = bw.x, .y = bw.y + 1, .z = bw.z }))) {
+                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y + 1, .z = bw.z }))) {
+                        // if (getBlock3(.{ .x = bw.x, .y = bw.y + 1, .z = bw.z }).isTransparent()) {
                         const vert = [_]f32{ bc.x, bc.y + 1, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 };
                         const inds = [_]u16{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
 
@@ -53,7 +58,7 @@ const Chunk = struct {
                         indsOffset += 4;
                     }
 
-                    if (isTransparent(getBlock(.{ .x = bw.x, .y = bw.y - 1, .z = bw.z }))) {
+                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y - 1, .z = bw.z }))) {
                         const vert = [_]f32{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x, bc.y, bc.z + 1 };
                         const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
 
@@ -63,7 +68,7 @@ const Chunk = struct {
                         indsOffset += 4;
                     }
 
-                    if (isTransparent(getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z + 1 }))) {
+                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z + 1 }))) {
                         const vert = [_]f32{ bc.x, bc.y, bc.z + 1, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 };
                         const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
 
@@ -73,7 +78,7 @@ const Chunk = struct {
                         indsOffset += 4;
                     }
 
-                    if (isTransparent(getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z - 1 }))) {
+                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z - 1 }))) {
                         const vert = [_]f32{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z };
                         const inds = [_]u16{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
 
@@ -83,7 +88,7 @@ const Chunk = struct {
                         indsOffset += 4;
                     }
 
-                    if (isTransparent(getBlock(.{ .x = bw.x + 1, .y = bw.y, .z = bw.z }))) {
+                    if (isTransparent(Map.getBlock(.{ .x = bw.x + 1, .y = bw.y, .z = bw.z }))) {
                         const vert = [_]f32{ bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z };
                         const inds = [_]u16{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
 
@@ -93,7 +98,7 @@ const Chunk = struct {
                         indsOffset += 4;
                     }
 
-                    if (isTransparent(getBlock(.{ .x = bw.x - 1, .y = bw.y, .z = bw.z }))) {
+                    if (isTransparent(Map.getBlock(.{ .x = bw.x - 1, .y = bw.y, .z = bw.z }))) {
                         const vert = [_]f32{ bc.x, bc.y, bc.z, bc.x, bc.y, bc.z + 1, bc.x, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z };
                         const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
 
@@ -173,75 +178,199 @@ const Chunk = struct {
         model.setTexture(self.Model.?, util.loadTexture("res/sprites.png"));
         model.setShadowShader(self.Model.?);
     }
-};
 
-pub var map = std.AutoHashMap(u96, Chunk).init(util.allocator);
-
-pub fn draw(ctx: *Context) void {
-    var mapIter = map.iterator();
-    while (mapIter.next()) |chunk| {
-        if (chunk.value_ptr.Model == null) continue;
-        if (!cull.isChunkVisible(toWorldPos(chunkPosFromHash(chunk.key_ptr.*)), ctx)) continue;
-        rl.drawModel(chunk.value_ptr.Model.?, toWorldPos(chunkPosFromHash(chunk.key_ptr.*)), 1, rl.Color.white);
-    }
-}
-
-pub fn update() void {
-    var mapIter = map.iterator();
-
-    while (mapIter.next()) |chunk| {
-        if (chunk.value_ptr.Dirty == false) continue;
-        chunk.value_ptr.genMesh(chunkPosFromHash(chunk.key_ptr.*)) catch {};
-        // chunk.value_ptr.startGenMesh(chunkPosFromHash(chunk.key_ptr.*)) catch {};
-        chunk.value_ptr.*.Dirty = false;
-    }
-}
-
-fn isTransparent(i: u8) bool {
-    return switch (@as(blocks.Type, @enumFromInt(i))) {
-        .air, .glass, .leaf => true,
-        else => false,
-    };
-}
-
-// x i32 + y i32 + z i32 = u96 for hashing
-// fn hashingFunc(x: i32, y: i32, z: i32) u96 {
-fn hashingFunc(x: f32, y: f32, z: f32) u96 {
-    const x1: i32 = @intFromFloat(x);
-    const y1: i32 = @intFromFloat(y);
-    const z1: i32 = @intFromFloat(z);
-
-    var result: u96 = @as(u32, @bitCast(x1));
-
-    result <<= 32;
-    result += @as(u32, @bitCast(y1));
-
-    result <<= 32;
-    result += @as(u32, @bitCast(z1));
-
-    return result;
-}
-
-pub fn chunkPosFromHash(key: u96) rl.Vector3 {
-    return rl.Vector3{
-        .x = @floatFromInt(@as(i32, @bitCast(@as(u32, @truncate(key >> 64))))),
-        .y = @floatFromInt(@as(i32, @bitCast(@as(u32, @truncate(key >> 32))))),
-        .z = @floatFromInt(@as(i32, @bitCast(@as(u32, @truncate(key))))),
-    };
-}
-
-pub fn getBlock(position: rl.Vector3) u8 {
-    const chunk = getChunk(toChunkPos(position));
-
-    if (chunk) |c| {
+    pub fn getChunkBlock(self: *Chunk, position: rl.Vector3) u8 {
         const x: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.x)), chunkSize));
         const y: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.y)), chunkSize));
         const z: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.z)), chunkSize));
-        return c.Blocks[x][y][z];
-    } else {
-        return 0;
+
+        return self.Blocks[x][y][z];
     }
-}
+};
+
+pub const Map = struct {
+    var chunks: std.AutoHashMap(u96, Chunk) = std.AutoHashMap(u96, Chunk).init(util.allocator);
+
+    pub fn draw(ctx: *Context) void {
+        var mapIter = chunks.iterator();
+        while (mapIter.next()) |chunk| {
+            if (chunk.value_ptr.Model == null) continue;
+            const pos = toWorldPos(chunkPosFromHash(chunk.key_ptr.*));
+            if (!cull.isChunkVisible(pos, ctx)) continue;
+            rl.drawModel(chunk.value_ptr.Model.?, pos, 1, rl.Color.white);
+        }
+    }
+
+    pub fn update() void {
+        var mapIter = chunks.iterator();
+
+        while (mapIter.next()) |chunk| {
+            if (chunk.value_ptr.Dirty == false) continue;
+            chunk.value_ptr.genMesh(chunkPosFromHash(chunk.key_ptr.*)) catch {};
+            chunk.value_ptr.*.Dirty = false;
+        }
+    }
+
+    pub fn getBlock(position: rl.Vector3) u8 {
+        const chunk = getChunk(toChunkPos(position));
+        return if (chunk) |c| c.getChunkBlock(position) else 0;
+    }
+
+    pub fn setBlock(position: rl.Vector3, b: u8) void {
+        const chunk = getChunkOrGen(toChunkPos(position));
+
+        const x: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.x)), chunkSize));
+        const y: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.y)), chunkSize));
+        const z: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.z)), chunkSize));
+
+        chunk.*.Blocks[x][y][z] = b;
+        chunk.*.Dirty = true;
+    }
+
+    pub fn setBlockUpdate(position: rl.Vector3, b: u8) void {
+        if (!blocks.Block.valid(b)) return;
+
+        // update Chunks around block that is updated
+        const sides = [_]rl.Vector3{ .{ .x = 0, .y = 1, .z = 0 }, .{ .x = 0, .y = -1, .z = 0 }, .{ .x = 1, .y = 0, .z = 0 }, .{ .x = -1, .y = 0, .z = 0 }, .{ .x = 0, .y = 0, .z = 1 }, .{ .x = 0, .y = 0, .z = -1 } };
+        for (sides) |s| {
+            if (getBlock(.{ .x = position.x + s.x, .y = position.y + s.y, .z = position.z + s.z }) != 0) {
+                getChunkOrGen(toChunkPos(.{ .x = position.x + s.x, .y = position.y + s.y, .z = position.z + s.z })).*.Dirty = true;
+            }
+        }
+
+        setBlock(position, b);
+    }
+
+    pub fn addChunk(position: anytype) void {
+        const emptyChunk = undefined;
+        chunks.ensureUnusedCapacity(10) catch {};
+        chunks.put(hashFromChunkPos(position.x, position.y, position.z), emptyChunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
+    }
+
+    pub fn getChunk(position: rl.Vector3) ?*Chunk {
+        return chunks.getPtr(hashFromChunkPos(position.x, position.y, position.z));
+    }
+
+    pub fn getChunkOrGen(position: rl.Vector3) *Chunk {
+        var chunk = getChunk(position);
+        if (chunk == null) {
+            addChunk(position);
+            chunk = getChunk(position);
+        }
+        return chunk.?;
+    }
+
+    fn hashFromChunkPos(x: f32, y: f32, z: f32) u96 {
+        const x_bits: i32 = @intFromFloat(x);
+        const y_bits: i32 = @intFromFloat(y);
+        const z_bits: i32 = @intFromFloat(z);
+
+        var result: u96 = 0;
+
+        result |= (@as(u96, @as(u32, @bitCast(x_bits))) << 64);
+        result |= (@as(u96, @as(u32, @bitCast(y_bits))) << 32);
+        result |= @as(u96, @as(u32, @bitCast(z_bits)));
+
+        return result;
+    }
+
+    fn chunkPosFromHash(key: u96) rl.Vector3 {
+        return rl.Vector3{
+            .x = @floatFromInt(@as(i32, @bitCast(@as(u32, @truncate(key >> 64))))),
+            .y = @floatFromInt(@as(i32, @bitCast(@as(u32, @truncate(key >> 32))))),
+            .z = @floatFromInt(@as(i32, @bitCast(@as(u32, @truncate(key))))),
+        };
+    }
+};
+
+pub const Generate = struct {
+    pub fn generate(position: rl.Vector3) void {
+        if (Map.getChunk(position)) |c| if (c.Generated == true) return;
+
+        const pos = toWorldPos(position);
+        const size = chunkSize;
+
+        const image = rl.genImagePerlinNoise(size, size, @intFromFloat(pos.x), @intFromFloat(pos.z), 0.1);
+        defer image.unload();
+
+        const image2 = rl.genImagePerlinNoise(size, size, @intFromFloat(pos.x), @intFromFloat(pos.z), 2);
+        defer image2.unload();
+
+        const colors = rl.loadImageColors(image) catch unreachable;
+        const colors2 = rl.loadImageColors(image2) catch unreachable;
+
+        for (0..@intCast(image.height)) |z| {
+            for (0..@intCast(image.width)) |x| {
+                const index = z * @as(usize, @intCast(image.width)) + x;
+                const pixel = colors[index];
+                const pixel2 = colors2[index];
+
+                var height: i32 = 0;
+                height += pixel2.r;
+                height += pixel2.g;
+                height += pixel2.b;
+                height = @divFloor(height, 10);
+
+                height += pixel.b;
+                height += pixel.r;
+                height += pixel.g;
+                height = @divFloor(height, 40);
+                height += 20;
+
+                const setBlockPos = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(height), .z = @floatFromInt(z) };
+
+                for (0..@intCast(height)) |h| {
+                    Map.setBlock(
+                        .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height - @as(i32, @intCast(h))), .z = setBlockPos.z + pos.z },
+                        @intCast(@intFromEnum(blocks.Block.ID.stone)),
+                    );
+                }
+                Map.setBlock(
+                    .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z },
+                    @intCast(@intFromEnum(blocks.Block.ID.grass)),
+                );
+
+                if (rl.getRandomValue(0, 100) == 1) {
+                    createTree(.{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z });
+                }
+            }
+        }
+
+        Map.getChunk(position).?.Generated = true;
+    }
+
+    pub fn createTree(position: rl.Vector3) void {
+        Map.setBlock(position, 1);
+
+        for (0..3) |i| {
+            const x: f32 = @floatFromInt(i);
+            for (0..3) |t| {
+                const y: f32 = @floatFromInt(t);
+                for (0..3) |q| {
+                    const z: f32 = @floatFromInt(q);
+                    Map.setBlock(
+                        .{ .x = position.x + x - 1, .y = position.y + 4 + y, .z = position.z + z - 1 },
+                        @intCast(@intFromEnum(blocks.Block.ID.leaf)),
+                    );
+                }
+            }
+        }
+
+        for (0..5) |i| {
+            const h: f32 = @floatFromInt(i);
+            Map.setBlock(
+                .{ .x = position.x, .y = position.y + h, .z = position.z },
+                @intCast(@intFromEnum(blocks.Block.ID.wood)),
+            );
+        }
+    }
+};
+
+// pub fn getBlockStruct(position: rl.Vector3) blocks.Block {
+//     const chunk = Map.getChunk(toChunkPos(position));
+//     const block = blocks.Block.fromInt(if (chunk) |c| c.getBlock2(position) else 0);
+//     return block;
+// }
 
 pub fn toChunkPos(position: rl.Vector3) rl.Vector3 {
     return rl.Vector3{
@@ -253,47 +382,4 @@ pub fn toChunkPos(position: rl.Vector3) rl.Vector3 {
 
 pub fn toWorldPos(position: rl.Vector3) rl.Vector3 {
     return rl.Vector3.scale(position, chunkSize);
-}
-
-pub fn getChunk(position: rl.Vector3) ?*Chunk {
-    // return map.getPtr(hashingFunc(@intFromFloat(position.x), @intFromFloat(position.y), @intFromFloat(position.z)));
-    return map.getPtr(hashingFunc(position.x, position.y, position.z));
-}
-
-// gen if there is no chunk
-pub fn getChunkOrGen(position: rl.Vector3) *Chunk {
-    const chunk = getChunk(position);
-    if (chunk == null) addChunk(position);
-    return getChunk(position).?;
-}
-
-pub fn setBlock(position: rl.Vector3, b: u8) void {
-    const chunk = getChunkOrGen(toChunkPos(position));
-
-    const x: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.x)), chunkSize));
-    const y: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.y)), chunkSize));
-    const z: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.z)), chunkSize));
-
-    chunk.*.Blocks[x][y][z] = b;
-    chunk.*.Dirty = true;
-}
-
-pub fn setBlockUpdate(position: rl.Vector3, b: u8) void {
-    if (!blocks.Type.valid(b)) return;
-
-    // update Chunks around block that is updated
-    const sides = [_]rl.Vector3{ .{ .x = 0, .y = 1, .z = 0 }, .{ .x = 0, .y = -1, .z = 0 }, .{ .x = 1, .y = 0, .z = 0 }, .{ .x = -1, .y = 0, .z = 0 }, .{ .x = 0, .y = 0, .z = 1 }, .{ .x = 0, .y = 0, .z = -1 } };
-    for (sides) |s| {
-        if (getBlock(.{ .x = position.x + s.x, .y = position.y + s.y, .z = position.z + s.z }) != 0) {
-            getChunkOrGen(toChunkPos(.{ .x = position.x + s.x, .y = position.y + s.y, .z = position.z + s.z })).*.Dirty = true;
-        }
-    }
-
-    setBlock(position, b);
-}
-
-const emptyChunk = undefined;
-pub fn addChunk(position: anytype) void {
-    // map.put(hashingFunc(@intFromFloat(position.x), @intFromFloat(position.y), @intFromFloat(position.z)), emptyChunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
-    map.put(hashingFunc(position.x, position.y, position.z), emptyChunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
 }

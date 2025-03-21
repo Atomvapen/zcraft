@@ -7,9 +7,12 @@
 * [X] Fix camera panning
 * [X] GetBlock middle mouse button for selected block
 * [ ] Fix camera movements (feels like pos and cam distance gets greater)
-* [ ] Fix chunk gen lag
-* [ ] remove profiler
+* [X] Fix chunk gen lag
+    * [X] Fix chunk gen lag again
+* [X] remove profiler
 * [ ] Move utiliteis fn
-* [ ] Settings menu
+* [X] Settings menu
 * [X] Basic main menu (expand)
-    * [ ] Store texture in Button etc.
+* [ ] Refactor Map
+* [X] Load block types from zig.zon
+* [ ] Use block types

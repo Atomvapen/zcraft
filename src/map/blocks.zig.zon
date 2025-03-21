@@ -1,0 +1,46 @@
+.{
+    .blocks = .{
+        .{
+            .id = .air,
+            .icon_path = "",
+            .transparent = true,
+            .collision = false,
+        },
+        .{
+            .id = .grass,
+            .icon_path = "assets/blocks/grass_flat.png",
+            .transparent = false,
+            .collision = true,
+        },
+        .{
+            .id = .glass,
+            .icon_path = "",
+            .transparent = true,
+            .collision = false,
+        },
+        .{
+            .id = .brick,
+            .icon_path = "",
+            .transparent = false,
+            .collision = true,
+        },
+        .{
+            .id = .stone,
+            .icon_path = "assets/blocks/dirt_flat.png",
+            .transparent = false,
+            .collision = true,
+        },
+        .{
+            .id = .wood,
+            .icon_path = "",
+            .transparent = false,
+            .collision = true,
+        },
+        .{
+            .id = .leaf,
+            .icon_path = "",
+            .transparent = true,
+            .collision = false,
+        },
+    },
+}

@@ -28,7 +28,7 @@ pub fn main() !void {
     shader.init();
     defer shader.deinit();
 
-    try blocks.init();
+    try blocks.init(ctx);
     defer blocks.deinit();
 
     try gui.DrawBuffer.init(ctx);

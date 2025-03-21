@@ -78,9 +78,9 @@ pub const Player = struct {
         }
     }
 
-    fn updateMap(self: *Player) void {
+    fn updateMap(self: *Player, ctx: *Context) void {
         const chunkPos = map.toChunkPos(.{ .x = self.camera.position.x, .y = 0, .z = self.camera.position.z });
-        const chunk = map.getChunk(chunkPos);
+        const chunk = map.Map.getChunk(chunkPos);
 
         if (chunk) |c| {
             if (!c.Generated) mapGen.generate(chunkPos);
@@ -88,20 +88,21 @@ pub const Player = struct {
             mapGen.generate(chunkPos);
         }
 
-        const renderDistance: i32 = 5;
+        // const renderDistance: i32 = 5;
+        const renderDistance: i32 = @intFromFloat(ctx.settings.renderDistance);
         for (0..@intCast(renderDistance)) |i| {
             for (0..@intCast(renderDistance)) |y| {
                 mapGen.generate(.{
-                    .x = @floatFromInt(@as(i32, @intFromFloat(chunkPos.x)) + @as(i32, @intCast(i)) - renderDistance / 2),
+                    .x = @floatFromInt(@as(i32, @intFromFloat(chunkPos.x)) + @as(i32, @intCast(i)) - @divTrunc(renderDistance, 2)),
                     .y = 0,
-                    .z = @floatFromInt(@as(i32, @intFromFloat(chunkPos.z)) + @as(i32, @intCast(y)) - renderDistance / 2),
+                    .z = @floatFromInt(@as(i32, @intFromFloat(chunkPos.z)) + @as(i32, @intCast(y)) - @divTrunc(renderDistance, 2)),
                 });
             }
         }
     }
 
     pub fn update(self: *Self, ctx: *Context) !void {
-        self.updateMap();
+        self.updateMap(ctx);
         self.handleKeybindings(ctx);
 
         self.applyGravity(@floatCast(ctx.deltatime));
@@ -246,19 +247,19 @@ pub const Player = struct {
             // std.debug.print("normal: {any}\n", .{hitNormal});
             // std.debug.print("newpos: {any}\n", .{newBlockPos});
 
-            map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
+            map.Map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
         }
     }
 
     pub fn breakBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            map.setBlockUpdate(hit, 0);
+            map.Map.setBlockUpdate(hit, 0);
         }
     }
 
     pub fn getBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            self.hotbar.items[self.hotbar.selection] = map.getBlock(hit);
+            self.hotbar.items[self.hotbar.selection] = map.Map.getBlock(hit);
         }
     }
 
@@ -268,7 +269,7 @@ pub const Player = struct {
         // Check X movement for collisions with blocks on the side
         var can_move_x = true;
         for (check_offsets) |offset| {
-            if (map.getBlock(.{ .x = @round(pos.x), .y = @round(self.pos.y + offset), .z = @round(self.pos.z) }) != 0) {
+            if (map.Map.getBlock(.{ .x = @round(pos.x), .y = @round(self.pos.y + offset), .z = @round(self.pos.z) }) != 0) {
                 can_move_x = false;
                 break;
             }
@@ -280,7 +281,7 @@ pub const Player = struct {
         // Check Z movement for collisions with blocks on the side
         var can_move_z = true;
         for (check_offsets) |offset| {
-            if (map.getBlock(.{ .x = @round(self.pos.x), .y = @round(self.pos.y + offset), .z = @round(pos.z) }) != 0) {
+            if (map.Map.getBlock(.{ .x = @round(self.pos.x), .y = @round(self.pos.y + offset), .z = @round(pos.z) }) != 0) {
                 can_move_z = false;
                 break;
             }
@@ -317,7 +318,7 @@ pub const Player = struct {
         self.pos.y -= self.vel.y;
 
         //     // **Check ceiling collision**
-        //     if (map.getBlock(.{ .x = @round(self.pos.x), .y = @round(new_y + check_offsets[2]), .z = @round(self.pos.z) }) != 0) {
+        //     if (map.Map.getBlock(.{ .x = @round(self.pos.x), .y = @round(new_y + check_offsets[2]), .z = @round(self.pos.z) }) != 0) {
         //         self.vel.y = 0; // Stop upward movement
         //     }
     }
@@ -340,7 +341,7 @@ const Collision = struct {
             var pos = rl.Vector3.moveTowards(player.camera.position, player.camera.target, distance);
             pos = .{ .x = @round(pos.x), .y = @round(pos.y), .z = @round(pos.z) };
 
-            if (map.getBlock(pos) != 0) return pos;
+            if (map.Map.getBlock(pos) != 0) return pos;
         }
 
         return null;
@@ -382,7 +383,7 @@ const Collision = struct {
             @abs(pos.z - player.camera.position.z) < max_distance)
         {
             // Check for block hit
-            if (map.getBlock(pos) != 0) {
+            if (map.Map.getBlock(pos) != 0) {
                 // Return the position of the hit and the normal for placement
                 return .{ pos, normal };
             }
@@ -426,7 +427,7 @@ const Collision = struct {
             // var pos = rl.Vector3.moveTowards(self.camera.position, vec, distance);
             pos = .{ .x = @round(pos.x), .y = @round(pos.y), .z = @round(pos.z) };
 
-            if (map.getBlock(pos) != 0) return pos;
+            if (map.Map.getBlock(pos) != 0) return pos;
         }
 
         return null;
