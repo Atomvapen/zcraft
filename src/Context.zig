@@ -47,7 +47,6 @@ pub fn update(self: *Self) !void {
 
 fn keybinds(self: *Self) void {
     const shader = @import("rendering/shader.zig");
-    // const mapGen = @import("map/generation.zig");
 
     switch (rl.getKeyPressed()) {
         .f3 => self.debug = !self.debug,
@@ -62,9 +61,5 @@ fn keybinds(self: *Self) void {
 
     if (rl.isKeyDown(.l)) {
         shader.lightCam.target.z -= 0.01;
-    }
-
-    if (rl.isKeyPressed(.x)) {
-        map.Generate.createTree(self.player.camera.position);
     }
 }

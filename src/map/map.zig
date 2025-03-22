@@ -5,6 +5,7 @@ const util = @import("../rendering/utilities.zig");
 const rl = @import("raylib");
 const Context = @import("../Context.zig");
 const Blocks = @import("blocks.zig");
+const zon = @import("../zon.zig");
 
 pub const chunkSize: u8 = 16;
 
@@ -244,11 +245,12 @@ const Chunk = struct {
         return self.blocks[x][y][z];
     }
 
+    /// Worldpos set block
     pub fn setBlock(self: *Chunk, position: rl.Vector3, b: u8) void {
         const x: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.x)), chunkSize));
         const y: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.y)), chunkSize));
         const z: u8 = @intCast(@mod(@as(i32, @intFromFloat(position.z)), chunkSize));
-
+        std.debug.assert(x < chunkSize and y < chunkSize and z < chunkSize);
         self.*.blocks[x][y][z] = b;
         self.*.dirty = true;
     }
@@ -259,7 +261,20 @@ const ChunkPosition = struct {
     wy: i32,
     wz: i32,
 
-    pub fn fromVec3(v: rl.Vector3) ChunkPosition {
+    pub fn toChunkPos(self: *ChunkPosition) rl.Vector3 {
+        const position = self.toVec3();
+        return rl.Vector3{
+            .x = @divFloor(position.x, chunkSize),
+            .y = @divFloor(position.y, chunkSize),
+            .z = @divFloor(position.z, chunkSize),
+        };
+    }
+
+    pub fn fromWorldPos(v: rl.Vector3) ChunkPosition {
+        return fromVec3(rl.Vector3.scale(v, chunkSize));
+    }
+
+    fn fromVec3(v: rl.Vector3) ChunkPosition {
         return .{
             .wx = @intFromFloat(v.x),
             .wy = @intFromFloat(v.y),
@@ -275,12 +290,33 @@ const ChunkPosition = struct {
         };
     }
 
-    pub fn hashFromPos(self: ChunkPosition) u96 {
+    pub fn hashFromWorldPos(self: ChunkPosition) u96 {
         var result: u96 = 0;
 
         result |= @as(u96, @as(u32, @bitCast(self.wx))) << 64;
         result |= @as(u96, @as(u32, @bitCast(self.wy))) << 32;
         result |= @as(u96, @as(u32, @bitCast(self.wz)));
+
+        return result;
+    }
+
+    pub fn hashFromChunkPos(self: *ChunkPosition) u96 {
+        const position = self.toVec3();
+        const pos = rl.Vector3{
+            .x = @divFloor(position.x, chunkSize),
+            .y = @divFloor(position.y, chunkSize),
+            .z = @divFloor(position.z, chunkSize),
+        };
+
+        const x_bits: i32 = @intFromFloat(pos.x);
+        const y_bits: i32 = @intFromFloat(pos.y);
+        const z_bits: i32 = @intFromFloat(pos.z);
+
+        var result: u96 = 0;
+
+        result |= @as(u96, @as(u32, @bitCast(x_bits))) << 64;
+        result |= @as(u96, @as(u32, @bitCast(y_bits))) << 32;
+        result |= @as(u96, @as(u32, @bitCast(z_bits)));
 
         return result;
     }
@@ -322,14 +358,16 @@ pub const Map = struct {
     var chunks: std.AutoHashMap(u96, Chunk) = std.AutoHashMap(u96, Chunk).init(util.allocator);
 
     pub fn draw(ctx: *Context) void {
+        // TODO: only draw if chunk distance to player < x
         var mapIter = chunks.iterator();
         while (mapIter.next()) |entry| {
             const chunk = entry.value_ptr;
 
             if (chunk.model == null) continue;
+
             const pos = chunk.pos.toVec3();
             if (!cull.isChunkVisible(pos, ctx)) continue;
-            rl.drawModel(chunk.model.?, pos, 1, rl.Color.white);
+            if (chunk.model) |m| rl.drawModel(m, pos, 1, rl.Color.white);
         }
     }
 
@@ -339,15 +377,10 @@ pub const Map = struct {
         while (mapIter.next()) |entry| {
             var chunk = entry.value_ptr;
             if (!chunk.dirty) continue;
-            const pos = toChunkPos(chunk.pos.toVec3());
+            const pos = chunk.pos.toChunkPos();
             chunk.generateMesh(pos) catch {};
             chunk.*.dirty = false;
         }
-    }
-
-    pub fn getChunkRelativePos(position: rl.Vector3) ?*Chunk {
-        const pos = toChunkPos(position);
-        return chunks.getPtr(hashFromChunkPos(pos.x, pos.y, pos.z));
     }
 
     pub fn getBlock(position: rl.Vector3) u8 {
@@ -384,13 +417,18 @@ pub const Map = struct {
 
     pub fn addChunk(position: anytype) void {
         var newChunk = Chunk.Empty;
-        newChunk.pos = ChunkPosition.fromVec3(toWorldPos(position));
+        newChunk.pos = ChunkPosition.fromWorldPos(position);
         chunks.ensureUnusedCapacity(15) catch {};
-        chunks.put(hashFromChunkPos(position.x, position.y, position.z), newChunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
+        chunks.put(newChunk.pos.hashFromChunkPos(), newChunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
     }
 
     pub fn getChunk(position: rl.Vector3) ?*Chunk {
         return chunks.getPtr(hashFromChunkPos(position.x, position.y, position.z));
+    }
+
+    pub fn getChunkRelativePos(position: rl.Vector3) ?*Chunk {
+        const pos = toChunkPos(position);
+        return chunks.getPtr(hashFromChunkPos(pos.x, pos.y, pos.z));
     }
 
     pub fn getChunkOrGen(position: rl.Vector3) *Chunk {
@@ -418,14 +456,21 @@ pub const Map = struct {
 };
 
 pub const Generate = struct {
-    pub fn generate(position: rl.Vector3) void {
-        var chunk = Map.getChunk(position);
+    fn safeSetBlock(pos: rl.Vector3, block: Blocks.Block.ID) void {
+        if (Map.getChunk(toChunkPos(pos)) == null) Map.addChunk(toChunkPos(pos));
+        const targetChunk = Map.getChunk(toChunkPos(pos));
+        if (targetChunk) |t| t.setBlock(pos, @intCast(@intFromEnum(block)));
+    }
 
+    pub fn generate(position: rl.Vector3) !void {
         if (Map.getChunk(position)) |c| {
             if (c.generated) return;
-        } else Map.addChunk(position);
+        } else {
+            Map.addChunk(position);
+        }
 
-        chunk = Map.getChunk(position);
+        const chunk = Map.getChunk(position);
+        if (chunk == null) return;
 
         if (chunk) |c| {
             const size = chunkSize;
@@ -461,17 +506,15 @@ pub const Generate = struct {
 
                     for (0..@intCast(height)) |h| {
                         const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + @as(f32, @floatFromInt(c.pos.wx)), .y = @as(f32, @floatFromInt(height)) - @as(f32, @floatFromInt(@as(i32, @intCast(h)))), .z = setBlockPos.z + @as(f32, @floatFromInt(c.pos.wz)) };
-                        Map.setBlock(blockPos, @intCast(@intFromEnum(Blocks.Block.ID.stone)));
-                        // c.setBlock(blockPos, @intCast(@intFromEnum(Blocks.Block.ID.stone)));
+                        safeSetBlock(blockPos, .stone);
                     }
 
                     const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + @as(f32, @floatFromInt(c.pos.wx)), .y = @floatFromInt(height), .z = setBlockPos.z + @as(f32, @floatFromInt(c.pos.wz)) };
-                    Map.setBlock(blockPos, @intCast(@intFromEnum(Blocks.Block.ID.grass)));
-                    // c.setBlock(blockPos, @intCast(@intFromEnum(Blocks.Block.ID.grass)));
+                    safeSetBlock(blockPos, .grass);
 
-                    if (rl.getRandomValue(0, 100) == 1) {
-                        createTree(blockPos);
-                    }
+                    // if (rl.getRandomValue(0, 100) == 1) {
+                    //     try placeStructure(.tree, blockPos);
+                    // }
                 }
             }
 
@@ -479,82 +522,23 @@ pub const Generate = struct {
         }
     }
 
-    // pub fn generate(position: rl.Vector3) void {
-    //     const chunk = Map.getChunk(position);
-    //     if (chunk) |c| if (c.generated) return;
+    pub fn placeStructure(structure: enum { tree }, base_pos: rl.Vector3) !void {
+        const BlockDef = struct { x: i32, y: i32, z: i32, id: Blocks.Block.ID };
+        const StrucutreData = struct { blocks: []const BlockDef };
 
-    //     const pos = toWorldPos(position);
-    //     const size = chunkSize;
+        const data = switch (structure) {
+            .tree => try zon.parse("src/map/structures/tree.zig.zon", StrucutreData),
+        };
 
-    //     const image = rl.genImagePerlinNoise(size, size, @intFromFloat(pos.x), @intFromFloat(pos.z), 0.1);
-    //     defer image.unload();
+        if (data.blocks.len == 0) return;
 
-    //     const image2 = rl.genImagePerlinNoise(size, size, @intFromFloat(pos.x), @intFromFloat(pos.z), 2);
-    //     defer image2.unload();
-
-    //     const colors = rl.loadImageColors(image) catch unreachable;
-    //     const colors2 = rl.loadImageColors(image2) catch unreachable;
-
-    //     for (0..@intCast(image.height)) |z| {
-    //         for (0..@intCast(image.width)) |x| {
-    //             const index = z * @as(usize, @intCast(image.width)) + x;
-    //             const pixel = colors[index];
-    //             const pixel2 = colors2[index];
-
-    //             var height: i32 = 0;
-    //             height += pixel2.r;
-    //             height += pixel2.g;
-    //             height += pixel2.b;
-    //             height = @divFloor(height, 10);
-
-    //             height += pixel.b;
-    //             height += pixel.r;
-    //             height += pixel.g;
-    //             height = @divFloor(height, 40);
-    //             height += 20;
-
-    //             const setBlockPos = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(height), .z = @floatFromInt(z) };
-
-    //             for (0..@intCast(height)) |h| {
-    //                 const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + pos.x, .y = @as(f32, @floatFromInt(height)) - @as(f32, @floatFromInt(@as(i32, @intCast(h)))), .z = setBlockPos.z + pos.z };
-    //                 Map.setBlock(blockPos, @intCast(@intFromEnum(Blocks.Block.ID.stone)));
-    //             }
-
-    //             const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + pos.x, .y = @floatFromInt(height), .z = setBlockPos.z + pos.z };
-    //             Map.setBlock(blockPos, @intCast(@intFromEnum(Blocks.Block.ID.grass)));
-
-    //             if (rl.getRandomValue(0, 100) == 1) {
-    //                 createTree(blockPos);
-    //             }
-    //         }
-    //     }
-
-    //     Map.getChunk(position).?.generated = true;
-    // }
-
-    pub fn createTree(position: rl.Vector3) void {
-        Map.setBlock(position, 1);
-
-        for (0..3) |i| {
-            const x: f32 = @floatFromInt(i);
-            for (0..3) |t| {
-                const y: f32 = @floatFromInt(t);
-                for (0..3) |q| {
-                    const z: f32 = @floatFromInt(q);
-                    Map.setBlock(
-                        .{ .x = position.x + x - 1, .y = position.y + 4 + y, .z = position.z + z - 1 },
-                        @intCast(@intFromEnum(Blocks.Block.ID.leaf)),
-                    );
-                }
-            }
-        }
-
-        for (0..5) |i| {
-            const h: f32 = @floatFromInt(i);
-            Map.setBlock(
-                .{ .x = position.x, .y = position.y + h, .z = position.z },
-                @intCast(@intFromEnum(Blocks.Block.ID.wood)),
-            );
+        for (data.blocks) |entry| {
+            const world_pos = rl.Vector3{
+                .x = base_pos.x + @as(f32, @floatFromInt(entry.x)),
+                .y = base_pos.y + @as(f32, @floatFromInt(entry.y)),
+                .z = base_pos.z + @as(f32, @floatFromInt(entry.z)),
+            };
+            safeSetBlock(world_pos, entry.id);
         }
     }
 };

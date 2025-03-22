@@ -16,3 +16,4 @@
 * [ ] Refactor Map
 * [X] Load block types from zig.zon
 * [ ] Use block types
+* [ ] create chunks with allocator and store pointer

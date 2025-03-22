@@ -6,7 +6,7 @@ pub fn init(ctx: *Context) !void {
     const BlockDef = struct {
         id: Block.ID,
         // name: []const u8 ,
-        icon_path: []const u8,
+        icon_path: [:0]const u8,
         // texture_path: []const u8,
         transparent: bool,
         collision: bool,
@@ -26,9 +26,7 @@ pub fn init(ctx: *Context) !void {
 
     for (parsed.blocks, 0..) |def, i| {
         if (def.icon_path.len > 0) {
-            const icon_pathZ = try ctx.allocator.dupeZ(u8, def.icon_path);
-            defer ctx.allocator.free(icon_pathZ);
-            icon[i] = try rl.loadTexture(icon_pathZ);
+            icon[i] = try rl.loadTexture(def.icon_path);
         }
         transparent[i] = def.transparent;
         collision[i] = def.collision;

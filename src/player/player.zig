@@ -78,14 +78,14 @@ pub const Player = struct {
         }
     }
 
-    fn updateMap(self: *Player, ctx: *Context) void {
+    fn updateMap(self: *Player, ctx: *Context) !void {
         const chunkPos = map.toChunkPos(.{ .x = self.camera.position.x, .y = 0, .z = self.camera.position.z });
 
         // const renderDistance: i32 = 5;
         const renderDistance: i32 = @intFromFloat(ctx.settings.renderDistance);
         for (0..@intCast(renderDistance)) |i| {
             for (0..@intCast(renderDistance)) |y| {
-                map.Generate.generate(.{
+                try map.Generate.generate(.{
                     .x = @floatFromInt(@as(i32, @intFromFloat(chunkPos.x)) + @as(i32, @intCast(i)) - @divTrunc(renderDistance, 2)),
                     .y = 0,
                     .z = @floatFromInt(@as(i32, @intFromFloat(chunkPos.z)) + @as(i32, @intCast(y)) - @divTrunc(renderDistance, 2)),
@@ -95,7 +95,7 @@ pub const Player = struct {
     }
 
     pub fn update(self: *Self, ctx: *Context) !void {
-        self.updateMap(ctx);
+        try self.updateMap(ctx);
         self.handleKeybindings(ctx);
 
         self.applyGravity(@floatCast(ctx.deltatime));
