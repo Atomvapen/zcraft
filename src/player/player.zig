@@ -233,7 +233,7 @@ pub const Player = struct {
     pub fn getBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
             // self.hotbar.items[self.hotbar.selection] = map.Map.getBlock(hit);
-            if (map.Map.getChunkRelativePos(hit)) |c| self.hotbar.items[self.hotbar.selection] = c.getChunkBlock(hit);
+            if (map.Map.getChunkRelativePos(hit)) |c| self.hotbar.items[self.hotbar.selection] = c.getBlock(hit);
             // self.hotbar.items[self.hotbar.selection] = map.Map.getChunkRelativePos(hit).?.getChunkBlock(hit);
         }
     }
