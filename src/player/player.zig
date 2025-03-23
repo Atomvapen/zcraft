@@ -49,7 +49,7 @@ pub const Player = struct {
         self.stats.health = 0;
     }
 
-    fn handleKeybindings(self: *Self, ctx: *Context) void {
+    fn handleKeybindings(self: *Self, ctx: *Context) !void {
         for (49..57 + 1) |key| {
             if (rl.isKeyPressed(@enumFromInt(key))) self.hotbar.selection = @intCast(key - 49);
         }
@@ -66,11 +66,11 @@ pub const Player = struct {
         }
 
         if (rl.isMouseButtonPressed(.right)) {
-            self.placeBlock();
+            try self.placeBlock();
         }
 
         if (rl.isMouseButtonPressed(.left)) {
-            self.breakBlock();
+            try self.breakBlock();
         }
 
         if (rl.isMouseButtonPressed(.middle)) {
@@ -96,7 +96,7 @@ pub const Player = struct {
 
     pub fn update(self: *Self, ctx: *Context) !void {
         try self.updateMap(ctx);
-        self.handleKeybindings(ctx);
+        try self.handleKeybindings(ctx);
 
         self.applyGravity(@floatCast(ctx.deltatime));
         self.movePlayer(@floatCast(ctx.deltatime));
@@ -196,7 +196,7 @@ pub const Player = struct {
         }
     }
 
-    pub fn placeBlock(self: *Self) void {
+    pub fn placeBlock(self: *Self) !void {
         if (Collision.sendRayNormal(self)) |hit| {
             { //TODO FIX
                 const hit_size = rl.Vector3{ .x = 1, .y = 1, .z = 1 }; // Adjust based on hitbox
@@ -219,22 +219,21 @@ pub const Player = struct {
                 .z = @round(hitPos.z + hitNormal.z),
             };
 
-            map.Map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
+            try map.Map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
         }
     }
 
-    pub fn breakBlock(self: *Self) void {
+    pub fn breakBlock(self: *Self) !void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            map.Map.setBlockUpdate(hit, 0);
+            try map.Map.setBlockUpdate(hit, 0);
             // if (map.Map.getChunkRelativePos(hit)) |c| c.setBlockUpdate(hit, 0);
         }
     }
 
     pub fn getBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            // self.hotbar.items[self.hotbar.selection] = map.Map.getBlock(hit);
-            if (map.Map.getChunkRelativePos(hit)) |c| self.hotbar.items[self.hotbar.selection] = c.getBlock(hit);
-            // self.hotbar.items[self.hotbar.selection] = map.Map.getChunkRelativePos(hit).?.getChunkBlock(hit);
+            if (map.Map.getChunk(map.toChunkPos(hit))) |c| self.hotbar.items[self.hotbar.selection] = c.getBlock(hit);
+            // why ChunkPos needed?
         }
     }
 

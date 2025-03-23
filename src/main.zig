@@ -5,6 +5,7 @@ const Context = @import("Context.zig");
 const rl = @import("raylib");
 const gui = @import("gui/gui.zig");
 const blocks = @import("map/blocks.zig");
+const map = @import("map/map.zig");
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
@@ -32,6 +33,11 @@ pub fn main() !void {
 
     try gui.DrawBuffer.init(ctx);
     defer gui.DrawBuffer.deinit();
+
+    map.Map.init();
+    defer map.Map.deinit();
+
+    try map.Generate.Structures.init();
 
     ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
 

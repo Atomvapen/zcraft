@@ -9,7 +9,13 @@ pub fn parse(path: []const u8, T: type) !T {
     const file_dataZ: [:0]u8 = try allocator.dupeZ(u8, file_data);
     defer allocator.free(file_dataZ);
 
-    const parsed: T = try std.zon.parse.fromSlice(T, allocator, file_dataZ, null, .{ .ignore_unknown_fields = true });
+    var status: std.zon.parse.Status = .{};
+    const parsed = std.zon.parse.fromSlice(T, allocator, file_dataZ, &status, .{ .ignore_unknown_fields = true }) catch null;
 
-    return parsed;
+    if (parsed) |payload| {
+        return payload;
+    } else {
+        std.debug.print("Zon parsing failed with status: {any}\n", .{status});
+        return error.ZonParse;
+    }
 }
