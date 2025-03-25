@@ -54,6 +54,28 @@ pub const Neighbor = enum(u3) {
         };
     }
 
+    pub inline fn getFace(self: Neighbor) enum { top, bottom, side } {
+        return switch (self) {
+            .posY => .top,
+            .negY => .bottom,
+            .posX => .side,
+            .negX => .side,
+            .posZ => .side,
+            .negZ => .side,
+        };
+    }
+
+    pub inline fn getVerts(self: Neighbor, bc: rl.Vector3) [12]f32 {
+        return switch (self) {
+            .posY => .{ bc.x, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
+            .negY => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x, bc.y, bc.z + 1 },
+            .posZ => .{ bc.x, bc.y, bc.z + 1, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 },
+            .negZ => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z },
+            .posX => .{ bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
+            .negX => .{ bc.x, bc.y, bc.z, bc.x, bc.y, bc.z + 1, bc.x, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z },
+        };
+    }
+
     pub inline fn reverse(self: Neighbor) Neighbor {
         return switch (self) {
             .posY => .negY,
@@ -84,110 +106,76 @@ const Chunk = struct {
         util.allocator.destroy(self);
     }
 
-    fn generateMesh(self: *Chunk, pos: rl.Vector3) !void {
-        const chunkPosWorld = rl.Vector3.scale(pos, chunkSize);
+    fn generateMesh(self: *Chunk) !void {
+        const chunkPosWorld = self.pos.toVec3();
+        const chunkVolume: usize = @as(usize, chunkSize) * chunkSize * chunkSize;
+        var indsOffset: u16 = 0;
 
         var vertList = std.ArrayList(f32).init(util.allocator);
         defer vertList.deinit();
+        try vertList.ensureTotalCapacityPrecise(chunkVolume * 72);
 
         var indsList = std.ArrayList(u16).init(util.allocator);
         defer indsList.deinit();
+        try indsList.ensureTotalCapacityPrecise(chunkVolume * 36);
 
         var texList = std.ArrayList(u8).init(util.allocator);
         defer texList.deinit();
+        try texList.ensureTotalCapacityPrecise(chunkVolume * 6);
 
-        var indsOffset: u16 = 0;
+        for (0..chunkSize) |x| for (0..chunkSize) |y| for (0..chunkSize) |z| {
+            if (self.blocks[x][y][z] == 0) continue;
 
-        for (0..chunkSize) |x| {
-            for (0..chunkSize) |y| {
-                for (0..chunkSize) |z| {
-                    if (self.blocks[x][y][z] == 0) continue;
+            const bc = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
+            const bw = rl.Vector3.add(chunkPosWorld, bc);
 
-                    const bc = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
-                    const bw = rl.Vector3.add(chunkPosWorld, bc);
+            // const block = self.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z });
+            const block = self.blocks[x][y][z];
 
-                    //const tSize = 1;//1.0 / 16.0; //tile size
-                    //const xt = tSize * @as(f32, @floatFromInt(getBlock(.{bw.x, bw.y, bw.z}) - 1));
-                    //const texCords = [_]f32{ xt, 0.0, tSize + xt, 0.0, tSize + xt, tSize, 0.0 + xt, tSize };
-                    // std.debug.print("bw {any}\n", .{bw});
-                    const block = Map.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z }) - 1;
-                    const texCords = [_]u8{ block, block + 1, block + 18, block + 17 };
+            for (Neighbor.iterable) |neighbor| {
+                const neighborOffset = neighbor.relPos();
+                const nx: i32 = @as(i32, @intCast(x)) + @as(i32, @intFromFloat(neighborOffset.x));
+                const ny: i32 = @as(i32, @intCast(y)) + @as(i32, @intFromFloat(neighborOffset.y));
+                const nz: i32 = @as(i32, @intCast(z)) + @as(i32, @intFromFloat(neighborOffset.z));
 
-                    // up face
-                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y + 1, .z = bw.z }))) {
-                        // if (getBlock3(.{ .x = bw.x, .y = bw.y + 1, .z = bw.z }).isTransparent()) {
-                        const vert = [_]f32{ bc.x, bc.y + 1, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 };
-                        const inds = [_]u16{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
+                const neighborBlock = if (nx >= 0 and nx < chunkSize and ny >= 0 and ny < chunkSize and nz >= 0 and nz < chunkSize)
+                    self.blocks[@intCast(nx)][@intCast(ny)][@intCast(nz)]
+                else
+                    Map.getBlock(rl.Vector3.add(neighborOffset, bw));
 
-                        vertList.appendSlice(&vert) catch {};
-                        indsList.appendSlice(&inds) catch {};
-                        texList.appendSlice(&texCords) catch {};
-                        indsOffset += 4;
-                    }
+                if (!isTransparent(neighborBlock)) continue;
 
-                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y - 1, .z = bw.z }))) {
-                        const vert = [_]f32{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x, bc.y, bc.z + 1 };
-                        const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
+                const face: u8 = @intFromEnum(neighbor.getFace());
 
-                        vertList.appendSlice(&vert) catch {};
-                        indsList.appendSlice(&inds) catch {};
-                        texList.appendSlice(&texCords) catch {};
-                        indsOffset += 4;
-                    }
+                const faceTex: u8 = blk: {
+                    const Block: Blocks.Block = Blocks.Block.fromInt(block);
+                    const indexOffset: u8 = 1;
+                    const spriteIndex: u8 = Block.getFaceTexture(@enumFromInt(face));
+                    break :blk spriteIndex - indexOffset;
+                };
 
-                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z + 1 }))) {
-                        const vert = [_]f32{ bc.x, bc.y, bc.z + 1, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 };
-                        const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
+                const verts: [12]f32 = neighbor.getVerts(bc);
+                const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
+                const texCords = [_]u8{ faceTex, faceTex + 1, faceTex + 18, faceTex + 17 };
 
-                        vertList.appendSlice(&vert) catch {};
-                        indsList.appendSlice(&inds) catch {};
-                        texList.appendSlice(&texCords) catch {};
-                        indsOffset += 4;
-                    }
+                try vertList.appendSlice(&verts);
+                try indsList.appendSlice(&inds);
+                try texList.appendSlice(&texCords);
 
-                    if (isTransparent(Map.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z - 1 }))) {
-                        const vert = [_]f32{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z };
-                        const inds = [_]u16{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
-
-                        vertList.appendSlice(&vert) catch {};
-                        indsList.appendSlice(&inds) catch {};
-                        texList.appendSlice(&texCords) catch {};
-                        indsOffset += 4;
-                    }
-
-                    if (isTransparent(Map.getBlock(.{ .x = bw.x + 1, .y = bw.y, .z = bw.z }))) {
-                        const vert = [_]f32{ bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z };
-                        const inds = [_]u16{ indsOffset, indsOffset + 2, indsOffset + 1, indsOffset, indsOffset + 3, indsOffset + 2 };
-
-                        vertList.appendSlice(&vert) catch {};
-                        indsList.appendSlice(&inds) catch {};
-                        texList.appendSlice(&texCords) catch {};
-                        indsOffset += 4;
-                    }
-
-                    if (isTransparent(Map.getBlock(.{ .x = bw.x - 1, .y = bw.y, .z = bw.z }))) {
-                        const vert = [_]f32{ bc.x, bc.y, bc.z, bc.x, bc.y, bc.z + 1, bc.x, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z };
-                        const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
-
-                        vertList.appendSlice(&vert) catch {};
-                        indsList.appendSlice(&inds) catch {};
-                        texList.appendSlice(&texCords) catch {};
-                        indsOffset += 4;
-                    }
-                }
+                indsOffset += 4;
             }
-        }
+        };
 
         if (vertList.items.len == 0) { //emptyChunk
-            if (self.model != null) {
-                model.unloadMesh(self.model.?.meshes[0]);
+            if (self.model) |m| {
+                model.unloadMesh(m.meshes[0]);
                 self.model = null;
             }
             return;
         }
 
-        if (self.model != null) {
-            model.unloadMesh(self.model.?.meshes[0]);
+        if (self.model) |m| {
+            model.unloadMesh(m.meshes[0]);
         }
 
         var mesh = rl.Mesh{
@@ -209,7 +197,6 @@ const Chunk = struct {
             .vaoId = 0,
             .vboId = null,
         };
-        // defer util.allocator.free((mesh.indices));
 
         var vertlistcap = try util.allocator.alloc(u32, vertList.items.len);
         defer util.allocator.free(vertlistcap);
@@ -242,8 +229,13 @@ const Chunk = struct {
 
         self.model = try rl.loadModelFromMesh(mesh);
 
-        model.setTexture(self.model.?, util.loadTexture("res/sprites.png"));
-        model.setShadowShader(self.model.?);
+        if (self.model) |m| {
+            model.setTexture(m, Blocks.sprite);
+            model.setShadowShader(m);
+        }
+        // model.setTexture(self.model.?, util.loadTexture("res/sprites2.png"));
+        // model.setTexture(self.model.?, Blocks.sprite);
+        // model.setShadowShader(self.model.?);
     }
 
     pub fn getBlock(self: *Chunk, position: rl.Vector3) u8 {
@@ -411,8 +403,7 @@ pub const Map = struct {
         while (mapIter.next()) |entry| {
             var chunk = entry.value_ptr.*;
             if (!chunk.dirty) continue;
-            const pos = chunk.pos.toChunkPos();
-            chunk.generateMesh(pos) catch {}; //Continue?
+            chunk.generateMesh() catch {}; //Continue?
             chunk.*.dirty = false;
         }
     }
@@ -528,14 +519,23 @@ pub const Generate = struct {
 
                     const setBlockPos = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(height), .z = @floatFromInt(z) };
 
+                    // Stone
                     for (0..@intCast(height)) |h| {
                         const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + @as(f32, @floatFromInt(c.pos.wx)), .y = @as(f32, @floatFromInt(height)) - @as(f32, @floatFromInt(@as(i32, @intCast(h)))), .z = setBlockPos.z + @as(f32, @floatFromInt(c.pos.wz)) };
                         try safeSetBlock(blockPos, .stone);
                     }
 
-                    const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + @as(f32, @floatFromInt(c.pos.wx)), .y = @floatFromInt(height), .z = setBlockPos.z + @as(f32, @floatFromInt(c.pos.wz)) };
+                    // Dirt
+                    for (0..3) |h| {
+                        const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + @as(f32, @floatFromInt(c.pos.wx)), .y = @as(f32, @floatFromInt(height)) + @as(f32, @floatFromInt(@as(i32, @intCast(h)))), .z = setBlockPos.z + @as(f32, @floatFromInt(c.pos.wz)) };
+                        try safeSetBlock(blockPos, .dirt);
+                    }
+
+                    // Grass
+                    const blockPos: rl.Vector3 = .{ .x = setBlockPos.x + @as(f32, @floatFromInt(c.pos.wx)), .y = @floatFromInt(height + 3), .z = setBlockPos.z + @as(f32, @floatFromInt(c.pos.wz)) };
                     try safeSetBlock(blockPos, .grass);
 
+                    // Trees
                     if (rl.getRandomValue(0, 100) == 1) {
                         try Structures.place(.oak_tree, blockPos);
                     }

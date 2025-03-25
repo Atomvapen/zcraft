@@ -1,4 +1,4 @@
-const map = @import("../map/map.zig");
+const map = @import("../map/world.zig");
 const rl = @import("raylib");
 const Context = @import("../Context.zig");
 

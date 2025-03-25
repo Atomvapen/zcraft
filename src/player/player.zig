@@ -1,7 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
-const map = @import("../map/map.zig");
-// const mapGen = @import("../map/generation.zig");
+const map = @import("../map/world.zig");
 const Context = @import("../Context.zig");
 const shader = @import("../rendering/shader.zig");
 const gui = @import("../gui/gui.zig");
@@ -98,9 +97,10 @@ pub const Player = struct {
         try self.updateMap(ctx);
         try self.handleKeybindings(ctx);
 
-        self.applyGravity(@floatCast(ctx.deltatime));
-        self.movePlayer(@floatCast(ctx.deltatime));
-        self.updatePos(@floatCast(ctx.deltatime));
+        rl.updateCamera(&self.camera, rl.CameraMode.free);
+        // self.applyGravity(@floatCast(ctx.deltatime));
+        // self.movePlayer(@floatCast(ctx.deltatime));
+        // self.updatePos(@floatCast(ctx.deltatime));
     }
 
     fn sprint(self: *Self) !void {

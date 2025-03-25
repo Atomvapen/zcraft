@@ -2,7 +2,7 @@ const Self = @This();
 
 const std = @import("std");
 const Player = @import("player/player.zig").Player;
-const map = @import("map/map.zig");
+const map = @import("map/world.zig");
 const utilities = @import("rendering/utilities.zig");
 
 const rl = @import("raylib");

@@ -5,7 +5,7 @@ const Context = @import("Context.zig");
 const rl = @import("raylib");
 const gui = @import("gui/gui.zig");
 const blocks = @import("map/blocks.zig");
-const map = @import("map/map.zig");
+const map = @import("map/world.zig");
 
 pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}).init;
@@ -28,7 +28,7 @@ pub fn main() !void {
     shader.init();
     defer shader.deinit();
 
-    try blocks.init(ctx);
+    try blocks.init();
     defer blocks.deinit();
 
     try gui.DrawBuffer.init(ctx);
@@ -43,6 +43,8 @@ pub fn main() !void {
 
     while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
         try ctx.update();
+
+        rl.gl.rlDisableBackfaceCulling();
 
         rl.beginDrawing();
         rl.clearBackground(rl.Color.gray);

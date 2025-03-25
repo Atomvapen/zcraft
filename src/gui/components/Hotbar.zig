@@ -76,7 +76,7 @@ pub fn render(self: *Self) void {
             const blockIndex = self.ctx.player.hotbar.items[i];
             const block = blocks.Block.fromInt(blockIndex);
             if (@intFromEnum(block.id) == 0) continue;
-            const texture = block.getTexture() catch continue;
+            const texture = block.getIcon() catch continue;
 
             const iconSource = rl.Rectangle{
                 .x = 0,

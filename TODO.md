@@ -13,7 +13,8 @@
 * [ ] Move utiliteis fn
 * [X] Settings menu
 * [X] Basic main menu (expand)
-* [ ] Refactor Map
+* [X] Refactor Map
 * [X] Load block types from zig.zon
 * [ ] Use block types
-* [ ] create chunks with allocator and store pointer
+* [X] create chunks with allocator and store pointer
+* [X] "Better" system for structures

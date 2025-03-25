@@ -1,8 +1,22 @@
 const rl = @import("raylib");
 const std = @import("std");
 const Context = @import("../Context.zig");
+const zon = @import("../zon.zig");
 
-pub fn init(ctx: *Context) !void {
+const maxBlockType = u8;
+const maxBlockCount: usize = std.math.maxInt(maxBlockType); // 255= 8 bit limit
+
+pub var sprite: rl.Texture2D = undefined;
+
+var transparent: [maxBlockCount]bool = undefined;
+var solid: [maxBlockCount]bool = undefined;
+var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
+var icon: [maxBlockCount]rl.Texture2D = undefined;
+var faceIndex: [maxBlockCount][3]u8 = undefined; //top, bottom, side
+// var texture: [maxBlockCount]rl.Texture = undefined;
+
+pub fn init() !void {
+    const faces = struct { top: u8, bottom: u8, side: u8 };
     const BlockDef = struct {
         id: Block.ID,
         // name: []const u8 ,
@@ -10,19 +24,16 @@ pub fn init(ctx: *Context) !void {
         // texture_path: []const u8,
         transparent: bool,
         collision: bool,
+        // texture_faces
+        // sprite_indexes
+        faces: ?faces,
     };
 
     const BlocksData = struct {
         blocks: []const BlockDef,
     };
 
-    const file_data = try std.fs.cwd().readFileAlloc(ctx.allocator, "src/map/blocks.zig.zon", 10 * 1024);
-    defer ctx.allocator.free(file_data);
-
-    const file_dataZ: [:0]u8 = try ctx.allocator.dupeZ(u8, file_data);
-    defer ctx.allocator.free(file_dataZ);
-
-    const parsed: BlocksData = try std.zon.parse.fromSlice(BlocksData, ctx.allocator, file_dataZ, null, .{ .ignore_unknown_fields = true });
+    const parsed = try zon.parse("src/map/blocks.zig.zon", BlocksData);
 
     for (parsed.blocks, 0..) |def, i| {
         if (def.icon_path.len > 0) {
@@ -30,7 +41,17 @@ pub fn init(ctx: *Context) !void {
         }
         transparent[i] = def.transparent;
         collision[i] = def.collision;
+        if (def.faces) |face| {
+            faceIndex[i][0] = face.top;
+            faceIndex[i][1] = face.bottom;
+            faceIndex[i][2] = face.side;
+        } else { // TODO make if faceIndex[X][0] == 0, then its same texture for every face?
+            faceIndex[i][0] = 0;
+            faceIndex[i][1] = 0;
+            faceIndex[i][2] = 0;
+        }
     }
+    sprite = try rl.loadTexture("res/sprites2.png");
 }
 
 pub fn deinit() void {
@@ -39,23 +60,22 @@ pub fn deinit() void {
             icon[i].unload();
         }
     }
+    sprite.unload();
 }
 
-const maxBlockType = u8;
-const maxBlockCount: usize = std.math.maxInt(maxBlockType); // 255= 8 bit limit
-
-// var id: [maxBlockCount]u8 = undefined;
-var transparent: [maxBlockCount]bool = undefined;
-var solid: [maxBlockCount]bool = undefined;
-var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
-var icon: [maxBlockCount]rl.Texture2D = undefined;
-// var texture: [maxBlockCount]rl.Texture = undefined;
-
 pub const Block = struct {
-    pub const ID = enum(maxBlockType) { air, grass, glass, brick, stone, wood, leaf, _ };
+    pub const ID = enum(maxBlockType) { air, grass, dirt, glass, brick, stone, wood, leaf, _ };
 
     id: ID = @enumFromInt(0),
     // data: Data = .{},
+
+    pub inline fn getFaceTexture(self: Block, face: enum { Top, Bottom, Side }) u8 {
+        return faceIndex[@intFromEnum(self.id)][@intFromEnum(face)];
+    }
+
+    // pub inline fn getTexture(self: Block, side: enum { top, bottom, side }) u8 {
+    //     return texture[@intFromEnum(self.id)];
+    // }
 
     pub inline fn toInt(self: Block) i32 {
         return @intFromEnum(self.id);
@@ -81,7 +101,7 @@ pub const Block = struct {
         return collision[@intFromEnum(self.id)];
     }
 
-    pub inline fn getTexture(self: Block) !*rl.Texture {
+    pub inline fn getIcon(self: Block) !*rl.Texture {
         if (icon[@intFromEnum(self.id)].id == 0) return error.LoadImage;
         return &icon[@intFromEnum(self.id)];
     }
