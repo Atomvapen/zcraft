@@ -63,14 +63,18 @@ pub fn deinit() void {
     sprite.unload();
 }
 
+const Face = enum { top, bottom, side };
+
 pub const Block = struct {
     pub const ID = enum(maxBlockType) { air, grass, dirt, glass, brick, stone, wood, leaf, _ };
 
     id: ID = @enumFromInt(0),
     // data: Data = .{},
 
-    pub inline fn getFaceTexture(self: Block, face: enum { Top, Bottom, Side }) u8 {
-        return faceIndex[@intFromEnum(self.id)][@intFromEnum(face)];
+    pub inline fn getFaceTexture(self: Block, face: Face) u8 {
+        const indexOffset: u8 = 1;
+
+        return faceIndex[@intFromEnum(self.id)][@intFromEnum(face)] - indexOffset;
     }
 
     // pub inline fn getTexture(self: Block, side: enum { top, bottom, side }) u8 {
@@ -85,9 +89,9 @@ pub const Block = struct {
         return Block{ .id = @enumFromInt(b) };
     }
 
-    pub inline fn toId(self: Block) ID {
-        return self.id;
-    }
+    // pub inline fn toId(self: Block) ID {
+    //     return self.id;
+    // }
 
     pub inline fn fromId(id: ID) Block {
         return Block{ .id = id };
@@ -109,5 +113,68 @@ pub const Block = struct {
     pub inline fn valid(b: u8) bool {
         const field_count = @typeInfo(ID).@"enum".fields.len;
         return b < field_count;
+    }
+};
+
+pub const Neighbor = enum(u3) {
+    posY,
+    negY,
+    posX,
+    negX,
+    posZ,
+    negZ,
+
+    pub const iterable = [_]Neighbor{ @enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5) };
+
+    pub inline fn toInt(self: Neighbor) u3 {
+        return @intFromEnum(self);
+    }
+
+    pub inline fn fromInt(b: u3) Neighbor {
+        return @enumFromInt(b);
+    }
+
+    pub inline fn relPos(self: Neighbor) rl.Vector3 {
+        return switch (self) {
+            .posY => .{ .x = 0, .y = 1, .z = 0 },
+            .negY => .{ .x = 0, .y = -1, .z = 0 },
+            .posX => .{ .x = 1, .y = 0, .z = 0 },
+            .negX => .{ .x = -1, .y = 0, .z = 0 },
+            .posZ => .{ .x = 0, .y = 0, .z = 1 },
+            .negZ => .{ .x = 0, .y = 0, .z = -1 },
+        };
+    }
+
+    pub inline fn getFace(self: Neighbor) Face {
+        return switch (self) {
+            .posY => .top,
+            .negY => .bottom,
+            .posX => .side,
+            .negX => .side,
+            .posZ => .side,
+            .negZ => .side,
+        };
+    }
+
+    pub inline fn getVerts(self: Neighbor, bc: rl.Vector3) [12]f32 {
+        return switch (self) {
+            .posY => .{ bc.x, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
+            .negY => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x, bc.y, bc.z + 1 },
+            .posZ => .{ bc.x, bc.y, bc.z + 1, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 },
+            .negZ => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z },
+            .posX => .{ bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
+            .negX => .{ bc.x, bc.y, bc.z, bc.x, bc.y, bc.z + 1, bc.x, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z },
+        };
+    }
+
+    pub inline fn reverse(self: Neighbor) Neighbor {
+        return switch (self) {
+            .posY => .negY,
+            .negY => .posY,
+            .posX => .negX,
+            .negX => .posX,
+            .posZ => .negZ,
+            .negZ => .posZ,
+        };
     }
 };

@@ -7,11 +7,9 @@ const Context = @import("../Context.zig");
 const Blocks = @import("blocks.zig");
 const zon = @import("../zon.zig");
 
-pub const chunkSize: u8 = 16;
+const Block = @import("blocks.zig").Block;
 
-fn isTransparent(i: u8) bool {
-    return Blocks.Block.fromInt(i).isTransparent();
-}
+pub const chunkSize: u8 = 16;
 
 pub fn toChunkPos(position: rl.Vector3) rl.Vector3 {
     return rl.Vector3{
@@ -24,69 +22,6 @@ pub fn toChunkPos(position: rl.Vector3) rl.Vector3 {
 pub fn toWorldPos(position: rl.Vector3) rl.Vector3 {
     return rl.Vector3.scale(position, chunkSize);
 }
-
-pub const Neighbor = enum(u3) {
-    posY,
-    negY,
-    posX,
-    negX,
-    posZ,
-    negZ,
-
-    pub const iterable = [_]Neighbor{ @enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5) };
-
-    pub inline fn toInt(self: Neighbor) u3 {
-        return @intFromEnum(self);
-    }
-
-    pub inline fn fromInt(b: u3) Neighbor {
-        return @enumFromInt(b);
-    }
-
-    pub inline fn relPos(self: Neighbor) rl.Vector3 {
-        return switch (self) {
-            .posY => .{ .x = 0, .y = 1, .z = 0 },
-            .negY => .{ .x = 0, .y = -1, .z = 0 },
-            .posX => .{ .x = 1, .y = 0, .z = 0 },
-            .negX => .{ .x = -1, .y = 0, .z = 0 },
-            .posZ => .{ .x = 0, .y = 0, .z = 1 },
-            .negZ => .{ .x = 0, .y = 0, .z = -1 },
-        };
-    }
-
-    pub inline fn getFace(self: Neighbor) enum { top, bottom, side } {
-        return switch (self) {
-            .posY => .top,
-            .negY => .bottom,
-            .posX => .side,
-            .negX => .side,
-            .posZ => .side,
-            .negZ => .side,
-        };
-    }
-
-    pub inline fn getVerts(self: Neighbor, bc: rl.Vector3) [12]f32 {
-        return switch (self) {
-            .posY => .{ bc.x, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
-            .negY => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x, bc.y, bc.z + 1 },
-            .posZ => .{ bc.x, bc.y, bc.z + 1, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 },
-            .negZ => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z },
-            .posX => .{ bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
-            .negX => .{ bc.x, bc.y, bc.z, bc.x, bc.y, bc.z + 1, bc.x, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z },
-        };
-    }
-
-    pub inline fn reverse(self: Neighbor) Neighbor {
-        return switch (self) {
-            .posY => .negY,
-            .negY => .posY,
-            .posX => .negX,
-            .negX => .posX,
-            .posZ => .negZ,
-            .negZ => .posZ,
-        };
-    }
-};
 
 const Chunk = struct {
     blocks: [chunkSize][chunkSize][chunkSize]u8,
@@ -107,56 +42,49 @@ const Chunk = struct {
     }
 
     fn generateMesh(self: *Chunk) !void {
-        const chunkPosWorld = self.pos.toVec3();
+        const chunkPosWorld: rl.Vector3 = self.pos.toVec3();
         const chunkVolume: usize = @as(usize, chunkSize) * chunkSize * chunkSize;
         var indsOffset: u16 = 0;
 
-        var vertList = std.ArrayList(f32).init(util.allocator);
+        var vertList: std.ArrayListAligned(f32, null) = std.ArrayList(f32).init(util.allocator);
         defer vertList.deinit();
         try vertList.ensureTotalCapacityPrecise(chunkVolume * 72);
 
-        var indsList = std.ArrayList(u16).init(util.allocator);
+        var indsList: std.ArrayListAligned(u16, null) = std.ArrayList(u16).init(util.allocator);
         defer indsList.deinit();
         try indsList.ensureTotalCapacityPrecise(chunkVolume * 36);
 
-        var texList = std.ArrayList(u8).init(util.allocator);
+        var texList: std.ArrayListAligned(u8, null) = std.ArrayList(u8).init(util.allocator);
         defer texList.deinit();
         try texList.ensureTotalCapacityPrecise(chunkVolume * 6);
 
         for (0..chunkSize) |x| for (0..chunkSize) |y| for (0..chunkSize) |z| {
-            if (self.blocks[x][y][z] == 0) continue;
+            const block: Block = Block.fromInt(self.blocks[x][y][z]);
+            if (block.id == .air) continue;
 
-            const bc = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
-            const bw = rl.Vector3.add(chunkPosWorld, bc);
+            const bc: rl.Vector3 = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
+            const bw: rl.Vector3 = rl.Vector3.add(chunkPosWorld, bc);
 
-            // const block = self.getBlock(.{ .x = bw.x, .y = bw.y, .z = bw.z });
-            const block = self.blocks[x][y][z];
+            for (Blocks.Neighbor.iterable) |neighbor| {
+                const neighborOffset: rl.Vector3 = neighbor.relPos();
+                const nc: rl.Vector3 = bc.add(neighborOffset);
+                const nx: i32 = @intFromFloat(nc.x);
+                const ny: i32 = @intFromFloat(nc.y);
+                const nz: i32 = @intFromFloat(nc.z);
 
-            for (Neighbor.iterable) |neighbor| {
-                const neighborOffset = neighbor.relPos();
-                const nx: i32 = @as(i32, @intCast(x)) + @as(i32, @intFromFloat(neighborOffset.x));
-                const ny: i32 = @as(i32, @intCast(y)) + @as(i32, @intFromFloat(neighborOffset.y));
-                const nz: i32 = @as(i32, @intCast(z)) + @as(i32, @intFromFloat(neighborOffset.z));
-
-                const neighborBlock = if (nx >= 0 and nx < chunkSize and ny >= 0 and ny < chunkSize and nz >= 0 and nz < chunkSize)
+                const neighborBlock: u8 = if (nx >= 0 and nx < chunkSize and ny >= 0 and ny < chunkSize and nz >= 0 and nz < chunkSize)
                     self.blocks[@intCast(nx)][@intCast(ny)][@intCast(nz)]
                 else
                     Map.getBlock(rl.Vector3.add(neighborOffset, bw));
 
-                if (!isTransparent(neighborBlock)) continue;
+                const nBlock: Block = Block.fromInt(neighborBlock);
 
-                const face: u8 = @intFromEnum(neighbor.getFace());
+                if (!nBlock.isTransparent()) continue;
 
-                const faceTex: u8 = blk: {
-                    const Block: Blocks.Block = Blocks.Block.fromInt(block);
-                    const indexOffset: u8 = 1;
-                    const spriteIndex: u8 = Block.getFaceTexture(@enumFromInt(face));
-                    break :blk spriteIndex - indexOffset;
-                };
-
+                const faceTex: u8 = block.getFaceTexture(neighbor.getFace());
                 const verts: [12]f32 = neighbor.getVerts(bc);
-                const inds = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
-                const texCords = [_]u8{ faceTex, faceTex + 1, faceTex + 18, faceTex + 17 };
+                const inds: [6]u16 = [_]u16{ indsOffset, indsOffset + 1, indsOffset + 2, indsOffset, indsOffset + 2, indsOffset + 3 };
+                const texCords: [4]u8 = [_]u8{ faceTex, faceTex + 1, faceTex + 18, faceTex + 17 };
 
                 try vertList.appendSlice(&verts);
                 try indsList.appendSlice(&inds);
@@ -166,16 +94,13 @@ const Chunk = struct {
             }
         };
 
-        if (vertList.items.len == 0) { //emptyChunk
-            if (self.model) |m| {
-                model.unloadMesh(m.meshes[0]);
-                self.model = null;
-            }
-            return;
-        }
-
         if (self.model) |m| {
             model.unloadMesh(m.meshes[0]);
+            self.model = null;
+        }
+
+        if (vertList.items.len == 0 or indsList.items.len == 0) {
+            return;
         }
 
         var mesh = rl.Mesh{
@@ -201,28 +126,24 @@ const Chunk = struct {
         var vertlistcap = try util.allocator.alloc(u32, vertList.items.len);
         defer util.allocator.free(vertlistcap);
 
-        var texCoords = try util.allocator.alloc(u8, texList.items.len);
+        const texCoords = try util.allocator.alloc(u8, texList.items.len);
         defer util.allocator.free(texCoords);
 
-        // remove extra capacity
-        for (0..indsList.items.len) |e| mesh.indices[e] = indsList.items[@intCast(e)];
-        for (0..texList.items.len) |e| texCoords[e] = texList.items[@intCast(e)];
+        @memcpy(mesh.indices[0..indsList.items.len], indsList.items);
+        @memcpy(texCoords.ptr, texList.items);
 
         var i: usize = 0;
         var vi: usize = 0;
-
-        while (vertList.items.len > i) {
-            vertlistcap[vi] = @as(u8, texCoords[vi]);
-            vertlistcap[vi] <<= 8;
-
-            vertlistcap[vi] += @as(u6, @intFromFloat(vertList.items[i] + 0.5));
-            vertlistcap[vi] <<= 6;
-            vertlistcap[vi] += @as(u6, @intFromFloat(vertList.items[i + 1] + 0.5));
-            vertlistcap[vi] <<= 6;
-            vertlistcap[vi] += @as(u6, @intFromFloat(vertList.items[i + 2] + 0.5));
+        var pack: u32 = undefined;
+        while (i < vertList.items.len) {
+            pack = texCoords[vi];
+            pack = (pack << 8) | @as(u8, @intCast(@as(i32, @intFromFloat(vertList.items[i] + 0.5))));
+            pack = (pack << 6) | @as(u8, @intCast(@as(i32, @intFromFloat(vertList.items[i + 1] + 0.5))));
+            pack = (pack << 6) | @as(u8, @intCast(@as(i32, @intFromFloat(vertList.items[i + 2] + 0.5))));
+            vertlistcap[vi] = pack;
 
             i += 3;
-            vi = i / 3;
+            vi += 1;
         }
 
         try model.UploadMesh(&mesh, vertlistcap.ptr);
@@ -233,9 +154,6 @@ const Chunk = struct {
             model.setTexture(m, Blocks.sprite);
             model.setShadowShader(m);
         }
-        // model.setTexture(self.model.?, util.loadTexture("res/sprites2.png"));
-        // model.setTexture(self.model.?, Blocks.sprite);
-        // model.setShadowShader(self.model.?);
     }
 
     pub fn getBlock(self: *Chunk, position: rl.Vector3) u8 {
@@ -426,13 +344,9 @@ pub const Map = struct {
     }
 
     pub fn updateNeighbors(position: rl.Vector3) !void {
-        for (Neighbor.iterable) |n| {
+        for (Blocks.Neighbor.iterable) |n| {
             const offset = n.relPos();
-            const neighbor_pos = rl.Vector3{
-                .x = position.x + offset.x,
-                .y = position.y + offset.y,
-                .z = position.z + offset.z,
-            };
+            const neighbor_pos = position.add(offset);
             const chunk = try getChunkOrGen(toChunkPos(neighbor_pos));
 
             if (chunk.getBlock(neighbor_pos) != 0) {
