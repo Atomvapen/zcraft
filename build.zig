@@ -11,9 +11,14 @@ pub fn build(b: *std.Build) !void {
         .target = target,
     });
 
-    const rl = b.dependency("raylib_zig", .{});
-    exe.root_module.addImport("raylib", rl.module("raylib"));
-    exe.linkLibrary(rl.artifact("raylib"));
+    const rl = b.lazyDependency("raylib_zig", .{});
+    if (rl) |m| {
+        exe.root_module.addImport("raylib", m.module("raylib"));
+        exe.linkLibrary(m.artifact("raylib"));
+    }
+    // const rl = b.dependency("raylib_zig", .{});
+    // exe.root_module.addImport("raylib", rl.module("raylib"));
+    // exe.linkLibrary(rl.artifact("raylib"));
 
     const run_cmd = b.addRunArtifact(exe);
     const run_step = b.step("run", "Run zcraft");

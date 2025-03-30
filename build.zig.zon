@@ -6,6 +6,7 @@
         .raylib_zig = .{
             .url = "git+https://github.com/Not-Nik/raylib-zig?ref=devel#17a1754271ab440395256002cd7ae7a7d0a6f1cc",
             .hash = "raylib_zig-5.6.0-dev-KE8REFguBQDFc0VjPFDWO3CbuH2toCGrPhxDSPkQ1wNc",
+            .lazy = true,
         },
     },
     .paths = .{""},

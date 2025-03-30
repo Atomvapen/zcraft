@@ -3,8 +3,10 @@ const std = @import("std");
 const Context = @import("../Context.zig");
 const zon = @import("../zon.zig");
 
-const maxBlockType = u8;
-const maxBlockCount: usize = std.math.maxInt(maxBlockType); // 255= 8 bit limit
+const Face = enum { top, bottom, side };
+const faceCount: usize = @typeInfo(Face).@"enum".fields.len;
+const maxBlockType = u8; // 255= 8 bit limit
+const maxBlockCount: usize = std.math.maxInt(maxBlockType);
 
 pub var sprite: rl.Texture2D = undefined;
 
@@ -12,7 +14,7 @@ var transparent: [maxBlockCount]bool = undefined;
 var solid: [maxBlockCount]bool = undefined;
 var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
 var icon: [maxBlockCount]rl.Texture2D = undefined;
-var faceIndex: [maxBlockCount][3]u8 = undefined; //top, bottom, side
+var faceIndex: [maxBlockCount][faceCount]u8 = undefined; //top, bottom, side
 // var texture: [maxBlockCount]rl.Texture = undefined;
 
 pub fn init() !void {
@@ -63,8 +65,6 @@ pub fn deinit() void {
     sprite.unload();
 }
 
-const Face = enum { top, bottom, side };
-
 pub const Block = struct {
     pub const ID = enum(maxBlockType) { air, grass, dirt, glass, brick, stone, wood, leaf, _ };
 
@@ -111,7 +111,7 @@ pub const Block = struct {
     }
 
     pub inline fn valid(b: u8) bool {
-        const field_count = @typeInfo(ID).@"enum".fields.len;
+        const field_count: usize = @typeInfo(ID).@"enum".fields.len;
         return b < field_count;
     }
 };
@@ -124,7 +124,7 @@ pub const Neighbor = enum(u3) {
     posZ,
     negZ,
 
-    pub const iterable = [_]Neighbor{ @enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5) };
+    pub const iterable: [6]Neighbor = [_]Neighbor{ @enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5) };
 
     pub inline fn toInt(self: Neighbor) u3 {
         return @intFromEnum(self);

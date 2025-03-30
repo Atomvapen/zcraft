@@ -1,7 +1,6 @@
 const std = @import("std");
 const util = @import("../rendering/utilities.zig");
 const shader = @import("shader.zig");
-
 const rl = @import("raylib");
 
 pub fn setTexture(model: rl.Model, tex: rl.Texture) void {
@@ -13,33 +12,17 @@ pub fn setShadowShader(model: rl.Model) void {
 }
 
 pub fn unloadMesh(mesh: rl.Mesh) void {
-    //const mesh = self.Model.?.meshes.*;
-    const vc: f64 = @floatFromInt(mesh.vertexCount);
-
-    util.allocator.free(mesh.indices[0..@intFromFloat(vc * 1.5)]);
-    //util.allocator.free(mesh.texcoords[0..@intFromFloat(vc * 2)]);
-    //util.allocator.free(mesh.texcoords[0..@intFromFloat(vc * 2)]);
-
+    if (mesh.vaoId == 0 and mesh.vboId == null) return;
     rl.gl.rlUnloadVertexArray(@intCast(mesh.vaoId));
-    // rl.unloadMesh(mesh);
-
-    for (0..7) |i| {
-        // rl.gl.rlUnloadVertexBuffer(mesh.vboId[@intCast(i)]);
-        rl.gl.rlUnloadVertexBuffer(@intCast(mesh.vboId[@intCast(i)]));
-    }
-
+    for (0..7) |i| rl.gl.rlUnloadVertexBuffer(@intCast(mesh.vboId[@intCast(i)]));
     util.allocator.free(mesh.vboId[0..9]);
 }
 
-pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
-    if (mesh.vaoId > 0) {
-        // Check if mesh has already been loaded in GPU
+pub fn uploadMesh(mesh: *rl.Mesh, verts: [*]u32) void {
+    if (mesh.vaoId > 0) { // Check if mesh has already been loaded in GPU
         std.debug.print("VAO: [ID {}] Trying to re-load an already loaded mesh \n", .{mesh.vaoId});
         return;
     }
-    const vboid = try util.allocator.alloc(u32, 9);
-
-    mesh.vboId = @as([*c]c_int, @ptrCast(vboid.ptr));
 
     mesh.vaoId = 0; // Vertex Array Object
     mesh.vboId[rl.gl.rl_default_shader_attrib_location_position] = 0; // Vertex buffer: positions RL_DEFAULT_SHADER_ATTRIB_LOCATION_POSITION
@@ -55,14 +38,14 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
 
     // NOTE: Vertex attributes must be uploaded considering default locations points and available vertex data
     // Enable vertex attributes: position (shader-location = 0)
-    mesh.vboId[rl.gl.rl_default_shader_attrib_location_position] = @intCast(rl.gl.rlLoadVertexBuffer(verts, mesh.vertexCount * 1 * @sizeOf(u32), false));
-    rl.gl.rlSetVertexAttribute(rl.gl.rl_default_shader_attrib_location_position, 1, @as(i32, 0x1406), false, 0, 0);
+    mesh.vboId[rl.gl.rl_default_shader_attrib_location_position] = @intCast(rl.gl.rlLoadVertexBuffer(verts, mesh.vertexCount * 3 * @sizeOf(u32), false));
+    rl.gl.rlSetVertexAttribute(rl.gl.rl_default_shader_attrib_location_position, 1, rl.gl.rl_float, false, 0, 0);
     rl.gl.rlEnableVertexAttribute(rl.gl.rl_default_shader_attrib_location_position);
 
     // Enable vertex attributes: texcoords (shader-location = 1)
-    // mesh.vboId[rl.rl_default_shader_attrib_location_texcoord] = rl.rlLoadVertexBuffer(tex, mesh.vertexCount * 2 * @sizeOf(f32), false);
-    // rl.rlSetVertexAttribute(rl.rl_default_shader_attrib_location_texcoord, 2, ray.RL_FLOAT, false, 0, 0);
-    // rl.rlEnableVertexAttribute(rl.rl_default_shader_attrib_location_texcoord);
+    mesh.vboId[rl.gl.rl_default_shader_attrib_location_texcoord] = @intCast(rl.gl.rlLoadVertexBuffer(verts, mesh.vertexCount * 2 * @sizeOf(f32), false));
+    rl.gl.rlSetVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord, 2, rl.gl.rl_float, false, 0, 0);
+    rl.gl.rlEnableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord);
 
     // WARNING: When setting default vertex attribute values, the values for each generic vertex attribute
     // is part of current state, and it is maintained even if a different program object is used
@@ -71,10 +54,9 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
     // WARNING: Default value provided to shader if location available
     {
         const value = [_]f32{ 1.0, 1.0, 1.0 };
+        // const value: [3]f32 = @splat(1.0);
         rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_normal, &value, @intFromEnum(rl.ShaderAttribute.vec3), 3);
-        // rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_normal);
-        // if (mesh.vboId[rl.gl.rl_default_shader_attrib_location_normal] == 0) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_normal);
-        if (mesh.normals == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_normal);
+        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_normal);
     }
 
     // Default vertex attribute: color
@@ -82,9 +64,7 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
     {
         const value = [_]f32{ 1.0, 1.0, 1.0, 1.0 }; // WHITE
         rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_color, &value, @intFromEnum(rl.ShaderAttribute.vec4), 4);
-        // rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_color);
-        // if (mesh.vboId[rl.gl.rl_default_shader_attrib_location_color] == 0) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_color);
-        if (mesh.colors == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_color);
+        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_color);
     }
 
     // Default vertex attribute: tangent
@@ -92,9 +72,7 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
     {
         const value = [_]f32{ 0.0, 0.0, 0.0, 0.0 };
         rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_tangent, &value, @intFromEnum(rl.ShaderAttribute.vec4), 4);
-        // rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_tangent);
-        // if (mesh.vboId[rl.gl.rl_default_shader_attrib_location_tangent] == 0) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_tangent);
-        if (mesh.tangents == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_tangent);
+        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_tangent);
     }
 
     // Default vertex attribute: texcoord2
@@ -102,16 +80,16 @@ pub fn UploadMesh(mesh: *rl.Mesh, verts: [*]u32) !void {
     {
         const value = [_]f32{ 0.0, 0.0 };
         rl.gl.rlSetVertexAttributeDefault(rl.gl.rl_default_shader_attrib_location_texcoord2, &value, @intFromEnum(rl.ShaderAttribute.vec2), 2);
-        // rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord2);
-        // if (mesh.vboId[rl.gl.rl_default_shader_attrib_location_texcoord2] == 0) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord2);
-        if (mesh.texcoords2 == null) rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord2);
+        rl.gl.rlDisableVertexAttribute(rl.gl.rl_default_shader_attrib_location_texcoord2);
     }
 
     mesh.vboId[rl.gl.rl_default_shader_attrib_location_indices] = @intCast(rl.gl.rlLoadVertexBufferElement(mesh.indices, mesh.triangleCount * 3 * @sizeOf(u16), false));
 
     if (mesh.vaoId > 0) {
         std.debug.print("INFO: VAO: [ID {}] Mesh uploaded successfully to VRAM (GPU) \n", .{mesh.vaoId});
-    } else std.debug.print("VBO: Mesh uploaded successfully to VRAM (GPU) \n", .{});
+    } else {
+        std.debug.print("VBO: Mesh uploaded successfully to VRAM (GPU) \n", .{});
+    }
 
     rl.gl.rlDisableVertexArray();
 }

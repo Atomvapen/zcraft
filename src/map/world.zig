@@ -1,15 +1,14 @@
 const std = @import("std");
 const model = @import("../rendering/models.zig");
-const cull = @import("../rendering/frustumCulling.zig");
+const cull = @import("../rendering/frustum.zig");
 const util = @import("../rendering/utilities.zig");
 const rl = @import("raylib");
 const Context = @import("../Context.zig");
 const Blocks = @import("blocks.zig");
 const zon = @import("../zon.zig");
 
-const Block = @import("blocks.zig").Block;
-
-pub const chunkSize: u8 = 16;
+const Block = Blocks.Block;
+const Neighbor = Blocks.Neighbor;
 
 pub fn toChunkPos(position: rl.Vector3) rl.Vector3 {
     return rl.Vector3{
@@ -19,11 +18,15 @@ pub fn toChunkPos(position: rl.Vector3) rl.Vector3 {
     };
 }
 
-pub fn toWorldPos(position: rl.Vector3) rl.Vector3 {
-    return rl.Vector3.scale(position, chunkSize);
-}
+// pub fn toWorldPos(position: rl.Vector3) rl.Vector3 {
+//     return rl.Vector3.scale(position, chunkSize);
+// }
+
+pub const chunkSize: u8 = 16;
 
 const Chunk = struct {
+    // const size: u16 = 16;
+
     blocks: [chunkSize][chunkSize][chunkSize]u8,
     model: ?rl.Model = null,
     dirty: bool = false,
@@ -33,7 +36,7 @@ const Chunk = struct {
     pub const Empty: Chunk = .{ .blocks = undefined, .pos = undefined };
 
     pub fn create() !*Chunk {
-        const chunk = try util.allocator.create(Chunk);
+        const chunk: *Chunk = try util.allocator.create(Chunk);
         return chunk;
     }
 
@@ -42,7 +45,7 @@ const Chunk = struct {
     }
 
     fn generateMesh(self: *Chunk) !void {
-        const chunkPosWorld: rl.Vector3 = self.pos.toVec3();
+        const chunkPosWorld: rl.Vector3 = self.pos.toWorldPos();
         const chunkVolume: usize = @as(usize, chunkSize) * chunkSize * chunkSize;
         var indsOffset: u16 = 0;
 
@@ -65,7 +68,7 @@ const Chunk = struct {
             const bc: rl.Vector3 = rl.Vector3{ .x = @floatFromInt(x), .y = @floatFromInt(y), .z = @floatFromInt(z) };
             const bw: rl.Vector3 = rl.Vector3.add(chunkPosWorld, bc);
 
-            for (Blocks.Neighbor.iterable) |neighbor| {
+            for (Neighbor.iterable) |neighbor| {
                 const neighborOffset: rl.Vector3 = neighbor.relPos();
                 const nc: rl.Vector3 = bc.add(neighborOffset);
                 const nx: i32 = @intFromFloat(nc.x);
@@ -103,7 +106,7 @@ const Chunk = struct {
             return;
         }
 
-        var mesh = rl.Mesh{
+        var mesh: rl.Mesh = rl.Mesh{
             .triangleCount = @intCast(vertList.items.len / 6),
             .vertexCount = @intCast(vertList.items.len / 3),
             .indices = @ptrCast(try util.allocator.alloc(u16, indsList.items.len)),
@@ -120,33 +123,36 @@ const Chunk = struct {
             .boneMatrices = null,
             .boneCount = 0,
             .vaoId = 0,
-            .vboId = null,
+            .vboId = @as([*c]c_int, @ptrCast(try util.allocator.alloc(u32, 9))),
         };
+        const vc: f64 = @floatFromInt(mesh.vertexCount);
+        defer util.allocator.free(mesh.indices[0..@intFromFloat(vc * 1.5)]);
 
-        var vertlistcap = try util.allocator.alloc(u32, vertList.items.len);
-        defer util.allocator.free(vertlistcap);
-
-        const texCoords = try util.allocator.alloc(u8, texList.items.len);
-        defer util.allocator.free(texCoords);
-
+        var packedVerts: []u32 = try util.allocator.alloc(u32, vertList.items.len);
+        defer util.allocator.free(packedVerts);
         @memcpy(mesh.indices[0..indsList.items.len], indsList.items);
-        @memcpy(texCoords.ptr, texList.items);
+
+        const texCoords: []u8 = texList.items;
+        // const texCoords = try util.allocator.alloc(u8, texList.items.len);
+        // defer util.allocator.free(texCoords);
+        // @memcpy(texCoords.ptr, texList.items);
 
         var i: usize = 0;
         var vi: usize = 0;
         var pack: u32 = undefined;
+
         while (i < vertList.items.len) {
             pack = texCoords[vi];
             pack = (pack << 8) | @as(u8, @intCast(@as(i32, @intFromFloat(vertList.items[i] + 0.5))));
             pack = (pack << 6) | @as(u8, @intCast(@as(i32, @intFromFloat(vertList.items[i + 1] + 0.5))));
             pack = (pack << 6) | @as(u8, @intCast(@as(i32, @intFromFloat(vertList.items[i + 2] + 0.5))));
-            vertlistcap[vi] = pack;
+            packedVerts[vi] = pack;
 
             i += 3;
             vi += 1;
         }
 
-        try model.UploadMesh(&mesh, vertlistcap.ptr);
+        model.uploadMesh(&mesh, packedVerts.ptr);
 
         self.model = try rl.loadModelFromMesh(mesh);
 
@@ -181,31 +187,34 @@ const ChunkPosition = struct {
     wz: i32,
 
     pub fn toChunkPos(self: *ChunkPosition) rl.Vector3 {
-        const position = self.toVec3();
-        return rl.Vector3{
-            .x = @divFloor(position.x, chunkSize),
-            .y = @divFloor(position.y, chunkSize),
-            .z = @divFloor(position.z, chunkSize),
-        };
-    }
-
-    pub fn fromWorldPos(v: rl.Vector3) ChunkPosition {
-        return fromVec3(rl.Vector3.scale(v, chunkSize));
-    }
-
-    fn fromVec3(v: rl.Vector3) ChunkPosition {
         return .{
-            .wx = @intFromFloat(v.x),
-            .wy = @intFromFloat(v.y),
-            .wz = @intFromFloat(v.z),
+            .x = @as(f32, @floatFromInt(@divFloor(self.wx, chunkSize))),
+            .y = @as(f32, @floatFromInt(@divFloor(self.wy, chunkSize))),
+            .z = @as(f32, @floatFromInt(@divFloor(self.wz, chunkSize))),
         };
     }
 
-    pub fn toVec3(self: *ChunkPosition) rl.Vector3 {
+    pub fn fromChunkPos(v: *rl.Vector3) ChunkPosition {
+        return .{
+            .wx = @as(i32, @intFromFloat(v.x)),
+            .wy = @as(i32, @intFromFloat(v.y)),
+            .wz = @as(i32, @intFromFloat(v.z)),
+        };
+    }
+
+    pub fn toWorldPos(self: *ChunkPosition) rl.Vector3 {
         return .{
             .x = @floatFromInt(self.wx),
             .y = @floatFromInt(self.wy),
             .z = @floatFromInt(self.wz),
+        };
+    }
+
+    pub fn fromWorldPos(v: rl.Vector3) ChunkPosition {
+        return .{
+            .wx = @as(i32, @intFromFloat(v.x)) * chunkSize,
+            .wy = @as(i32, @intFromFloat(v.y)) * chunkSize,
+            .wz = @as(i32, @intFromFloat(v.z)) * chunkSize,
         };
     }
 
@@ -224,12 +233,7 @@ const ChunkPosition = struct {
     }
 
     pub fn hashFromChunkPos(self: *ChunkPosition) u96 {
-        const position = self.toVec3();
-        const pos = rl.Vector3{
-            .x = @divFloor(position.x, chunkSize),
-            .y = @divFloor(position.y, chunkSize),
-            .z = @divFloor(position.z, chunkSize),
-        };
+        const pos = self.toChunkPos();
 
         const x_bits: i32 = @intFromFloat(pos.x);
         const y_bits: i32 = @intFromFloat(pos.y);
@@ -244,49 +248,43 @@ const ChunkPosition = struct {
         return result;
     }
 
-    pub fn posFromHash(key: u96) ChunkPosition {
-        return .{
-            .wx = @bitCast(@as(u32, @truncate(key >> 64))),
-            .wy = @bitCast(@as(u32, @truncate(key >> 32))),
-            .wz = @bitCast(@as(u32, @truncate(key))),
-        };
-    }
+    // pub fn posFromHash(key: u96) ChunkPosition {
+    //     return .{
+    //         .wx = @bitCast(@as(u32, @truncate(key >> 64))),
+    //         .wy = @bitCast(@as(u32, @truncate(key >> 32))),
+    //         .wz = @bitCast(@as(u32, @truncate(key))),
+    //     };
+    // }
 
     fn distanceToChunk(self: *ChunkPosition, b: rl.Vector3) f32 {
-        const ax = @as(f32, @floatFromInt(self.wx)) / @as(f32, chunkSize);
-        const ay = @as(f32, @floatFromInt(self.wy)) / @as(f32, chunkSize);
-        const az = @as(f32, @floatFromInt(self.wz)) / @as(f32, chunkSize);
+        const a: rl.Vector3 = self.toChunkPos();
 
         const bx = b.x / @as(f32, chunkSize);
         const by = b.y / @as(f32, chunkSize);
         const bz = b.z / @as(f32, chunkSize);
 
-        const dx = ax - bx;
-        const dy = ay - by;
-        const dz = az - bz;
+        const dx = a.x - bx;
+        const dy = a.y - by;
+        const dz = a.z - bz;
 
         return @sqrt(dx * dx + dy * dy + dz * dz);
     }
 
-    fn distanceToChunkSquared(self: *ChunkPosition, b: rl.Vector3) f32 {
-        const ax = @as(f32, @floatFromInt(self.wx)) / @as(f32, chunkSize);
-        const ay = @as(f32, @floatFromInt(self.wy)) / @as(f32, chunkSize);
-        const az = @as(f32, @floatFromInt(self.wz)) / @as(f32, chunkSize);
+    // fn distanceToChunkSquared(self: *ChunkPosition, b: rl.Vector3) f32 {
+    //     const a: rl.Vector3 = self.toChunkPos();
+    //     const bx = b.x / @as(f32, chunkSize);
+    //     const by = b.y / @as(f32, chunkSize);
+    //     const bz = b.z / @as(f32, chunkSize);
 
-        const bx = b.x / @as(f32, chunkSize);
-        const by = b.y / @as(f32, chunkSize);
-        const bz = b.z / @as(f32, chunkSize);
+    //     const dx = a.x - bx;
+    //     const dy = a.y - by;
+    //     const dz = a.z - bz;
 
-        const dx = ax - bx;
-        const dy = ay - by;
-        const dz = az - bz;
-
-        return dx * dx + dy * dy + dz * dz;
-    }
+    //     return dx * dx + dy * dy + dz * dz;
+    // }
 };
 
 pub const Map = struct {
-    // var chunks: std.AutoHashMap(u96, *Chunk) = std.AutoHashMap(u96, *Chunk).init(util.allocator);
     var chunks: std.AutoHashMap(u96, *Chunk) = undefined;
 
     pub fn init() void {
@@ -297,7 +295,6 @@ pub const Map = struct {
         var mapIter = chunks.iterator();
         while (mapIter.next()) |entry| {
             entry.value_ptr.*.destroy();
-            // util.allocator.free(entry.value_ptr.*);
         }
         chunks.deinit();
     }
@@ -310,8 +307,8 @@ pub const Map = struct {
             if (chunk.model == null) continue;
             if (chunk.pos.distanceToChunk(ctx.player.pos) > ctx.settings.renderDistance) continue;
 
-            const pos = chunk.pos.toVec3();
-            if (!cull.isChunkVisible(pos, ctx)) continue;
+            const pos = chunk.pos.toWorldPos();
+            if (!cull.isChunkVisible(pos)) continue;
             if (chunk.model) |m| rl.drawModel(m, pos, 1, rl.Color.white);
         }
     }
@@ -321,33 +318,33 @@ pub const Map = struct {
         while (mapIter.next()) |entry| {
             var chunk = entry.value_ptr.*;
             if (!chunk.dirty) continue;
-            chunk.generateMesh() catch {}; //Continue?
+            chunk.generateMesh() catch {};
             chunk.*.dirty = false;
         }
     }
 
     pub fn getBlock(position: rl.Vector3) u8 {
-        const chunk = getChunk(toChunkPos(position));
+        const chunk: ?*Chunk = getChunk(toChunkPos(position));
         return if (chunk) |c| c.getBlock(position) else 0;
     }
 
     pub fn setBlock(position: rl.Vector3, b: u8) !void {
-        const chunk = try getChunkOrGen(toChunkPos(position));
+        const chunk: *Chunk = try getChunkOrGen(toChunkPos(position));
         chunk.setBlock(position, b);
         chunk.*.dirty = true; //TODO Needed?
     }
 
     pub fn setBlockUpdate(position: rl.Vector3, b: u8) !void {
-        if (!Blocks.Block.valid(b)) return;
+        if (!Block.valid(b)) return;
         try updateNeighbors(position);
         try setBlock(position, b);
     }
 
     pub fn updateNeighbors(position: rl.Vector3) !void {
-        for (Blocks.Neighbor.iterable) |n| {
-            const offset = n.relPos();
-            const neighbor_pos = position.add(offset);
-            const chunk = try getChunkOrGen(toChunkPos(neighbor_pos));
+        for (Neighbor.iterable) |n| {
+            const offset: rl.Vector3 = n.relPos();
+            const neighbor_pos: rl.Vector3 = position.add(offset);
+            const chunk: *Chunk = try getChunkOrGen(toChunkPos(neighbor_pos));
 
             if (chunk.getBlock(neighbor_pos) != 0) {
                 chunk.*.dirty = true;
@@ -356,7 +353,7 @@ pub const Map = struct {
     }
 
     pub fn addChunk(position: anytype) !void {
-        const newChunk = try Chunk.create();
+        const newChunk: *Chunk = try Chunk.create();
 
         newChunk.* = Chunk.Empty;
         newChunk.*.pos = ChunkPosition.fromWorldPos(position);
@@ -365,13 +362,13 @@ pub const Map = struct {
     }
 
     pub fn getChunk(position: rl.Vector3) ?*Chunk {
-        const hash = ChunkPosition.hashFromPos(position);
-        const chunkPtr = chunks.get(hash);
-        return if (chunkPtr) |ptr| ptr else null;
+        const hash: u96 = ChunkPosition.hashFromPos(position);
+        const chunk: ?*Chunk = chunks.get(hash);
+        return if (chunk) |c| c else null;
     }
 
     pub fn getChunkOrGen(position: rl.Vector3) !*Chunk {
-        var chunk = getChunk(position);
+        var chunk: ?*Chunk = getChunk(position);
         if (chunk == null) {
             try addChunk(position);
             chunk = getChunk(position);
@@ -381,9 +378,9 @@ pub const Map = struct {
 };
 
 pub const Generate = struct {
-    fn safeSetBlock(pos: rl.Vector3, block: Blocks.Block.ID) !void {
+    fn safeSetBlock(pos: rl.Vector3, block: Block.ID) !void {
         if (Map.getChunk(toChunkPos(pos)) == null) try Map.addChunk(toChunkPos(pos));
-        const targetChunk = Map.getChunk(toChunkPos(pos));
+        const targetChunk: ?*Chunk = Map.getChunk(toChunkPos(pos));
         if (targetChunk) |t| t.setBlock(pos, @intCast(@intFromEnum(block)));
     }
 
@@ -394,7 +391,7 @@ pub const Generate = struct {
             try Map.addChunk(position);
         }
 
-        const chunk = Map.getChunk(position);
+        const chunk: ?*Chunk = Map.getChunk(position);
         if (chunk == null) return;
 
         const radius: i32 = 8; // TODO get real radius
@@ -461,13 +458,13 @@ pub const Generate = struct {
     }
 
     pub const Structures = struct {
-        const BlockDef = struct { x: i32, y: i32, z: i32, id: Blocks.Block.ID };
+        const BlockDef = struct { pos: rl.Vector3, id: Block.ID };
         const StructureData = struct { blocks: []const BlockDef };
         const StructType = enum(u8) {
             oak_tree,
             _,
 
-            const iterable = [_]StructType{@enumFromInt(0)};
+            const iterable: [1]StructType = [_]StructType{@enumFromInt(0)};
         };
 
         var oak_tree: StructureData = undefined;
@@ -482,7 +479,7 @@ pub const Generate = struct {
         }
 
         pub fn place(structure: StructType, base_pos: rl.Vector3) !void {
-            const data = switch (structure) {
+            const data: ?StructureData = switch (structure) {
                 .oak_tree => Structures.oak_tree,
                 else => null,
             };
@@ -491,11 +488,8 @@ pub const Generate = struct {
                 if (payload.blocks.len == 0) return;
 
                 for (payload.blocks) |block| {
-                    const world_pos = rl.Vector3{
-                        .x = base_pos.x + @as(f32, @floatFromInt(block.x)),
-                        .y = base_pos.y + @as(f32, @floatFromInt(block.y)),
-                        .z = base_pos.z + @as(f32, @floatFromInt(block.z)),
-                    };
+                    const world_pos: rl.Vector3 = base_pos.add(block.pos);
+
                     try safeSetBlock(world_pos, block.id);
                 }
             }

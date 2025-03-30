@@ -98,9 +98,9 @@ pub const Player = struct {
         try self.handleKeybindings(ctx);
 
         rl.updateCamera(&self.camera, rl.CameraMode.free);
-        // self.applyGravity(@floatCast(ctx.deltatime));
-        // self.movePlayer(@floatCast(ctx.deltatime));
-        // self.updatePos(@floatCast(ctx.deltatime));
+        self.applyGravity(@floatCast(ctx.deltatime));
+        self.movePlayer(@floatCast(ctx.deltatime));
+        self.updatePos(@floatCast(ctx.deltatime));
     }
 
     fn sprint(self: *Self) !void {
