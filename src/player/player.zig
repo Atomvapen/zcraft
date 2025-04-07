@@ -385,10 +385,9 @@ const Collision = struct {
         // const amount: i32 = 16;
         const step: f32 = 0.1;
 
-        for (0..amount) |i| {
-            const distance = @as(f32, @floatFromInt(i)) * step;
-
-            var pos = player.camera.position;
+        for (0..distance) |i| {
+            const stepAmount = @as(f32, @floatFromInt(i)) * step;
+            var pos: Vec3f = vec.rlTransform(player.camera.position, Vec3f);
             switch (Direction) {
                 .down => pos.y -= distance,
                 .up => pos.y += distance,
