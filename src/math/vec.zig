@@ -6,32 +6,73 @@ pub const Vec2f = @Vector(2, f32);
 pub const Vec3f = @Vector(3, f32);
 pub const Vec4f = @Vector(4, f32);
 
-pub fn elementType(self: anytype) type {
-    const info = @typeInfo(@TypeOf(self));
-    if (info != .vector) @compileError("elementType() can only be used on vectors.");
-    return info.vector.child;
-}
+/// Produces a new vector from of type `target`.
+///
+/// Non-same vector length result in compile errors. Non-valid type conversion result in compile errors.
+///
+/// Supported conversions are between `Vec3i, Vec3f` and `rl.Vector3` .
+pub fn rlTransform(self: anytype, comptime Target: type) Target {
+    const rl = @import("raylib");
 
-pub fn size(self: anytype) i32 {
-    const info = @typeInfo(@TypeOf(self));
-    if (info != .vector) @compileError("size() can only be used on vectors.");
-    return info.vector.len;
+    if (@TypeOf(self) == Target) return self;
+
+    const self_info = @typeInfo(@TypeOf(self));
+    const target_info = @typeInfo(Target);
+
+    // Ensure valid source and target types
+    if (!(self_info == .vector or @TypeOf(self) == rl.Vector3)) {
+        @compileError("rlTransform() only supports conversions from rl.Vector3 or @Vector(3, T).");
+    }
+    if (!(target_info == .vector or Target == rl.Vector3)) {
+        @compileError("rlTransform() only supports conversions to rl.Vector3 or @Vector(3, T).");
+    }
+
+    // Ensure both are 3D vectors
+    if ((self_info == .vector and self_info.vector.len != 3) or (target_info == .vector and target_info.vector.len != 3)) {
+        @compileError("rlTransform() only supports 3D vectors.");
+    }
+
+    var result: Target = undefined;
+
+    switch (@TypeOf(self)) {
+        rl.Vector3 => switch (Target) {
+            Vec3i => result = @Vector(3, i32){
+                @as(i32, @intFromFloat(self.x)),
+                @as(i32, @intFromFloat(self.y)),
+                @as(i32, @intFromFloat(self.z)),
+            },
+            Vec3f => result = @Vector(3, f32){
+                self.x,
+                self.y,
+                self.z,
+            },
+            else => @compileError("Unsupported conversion."),
+        },
+        Vec3f => result = rl.Vector3{ .x = self[0], .y = self[1], .z = self[2] },
+        Vec3i => result = rl.Vector3{ .x = @floatFromInt(self[0]), .y = @floatFromInt(self[1]), .z = @floatFromInt(self[2]) },
+        else => @compileError("Unsupported conversion."),
+    }
+
+    return result;
 }
 
 /// Produces a new vector from of type `target`.
 ///
 /// Non-same vector length result in compile errors. Non-valid type conversion result in compile errors.
 ///
-/// Supports conversions are between `i32` and `f32`.
-pub fn transform(self: anytype, target: type) target {
-    const info = @typeInfo(@TypeOf(self));
-    if (info != .vector) @compileError("transform() can only be used on vectors.");
-    if (info.vector.len != @typeInfo(target).vector.len) @compileError("Vectors must have the same length.");
-    if (@TypeOf(self) == target) return self; // @compileError("Cannot transform to the same type."); /// - Triggers `@compileError("Cannot transform to the same type.")` if `self` and `target` are the same type.
+/// Supported conversions are between `i32` and `f32`.
+pub fn transform(self: anytype, comptime Target: type) Target {
+    const self_info = @typeInfo(@TypeOf(self));
+    const target_info = @typeInfo(Target);
 
-    const ChildType: type = info.vector.child;
-    const vector_length: i32 = info.vector.len;
-    var result: target = undefined;
+    if (self_info != .vector) @compileError("Transformation can only be used on vectors.");
+    if (target_info != .vector) @compileError("Transformation can only be done to vectors.");
+    if (self_info.vector.len != target_info.vector.len) @compileError("Vectors must have the same length.");
+    if (@TypeOf(self) == Target) @compileError("Transformation from and to the same type."); //return self;
+
+    const ChildType: type = self_info.vector.child;
+    const vector_length: i32 = self_info.vector.len;
+    var result: Target = undefined;
     inline for (0..vector_length) |i| {
         result[i] = switch (ChildType) {
             i32 => @floatFromInt(self[i]),
@@ -45,12 +86,13 @@ pub fn transform(self: anytype, target: type) target {
 /// Produces a new vector from the first `n` elements of the imput vector.
 ///
 /// Out-of-bounds element indexes of `n` result in compile errors.
-pub fn extract(self: anytype, n: usize) @Vector(n, @typeInfo(@TypeOf(self)).vector.child) {
+pub fn slice(self: anytype, comptime n: usize) @Vector(n, @typeInfo(@TypeOf(self)).vector.child) {
     const info = @typeInfo(@TypeOf(self));
-    if (info != .vector) @compileError("extract() can only be used on vectors.");
+    if (info != .vector) @compileError("slice() can only be used on vectors.");
     if (info.vector.len < n) @compileError("Amount cannot be greater than vector length.");
     var result: @Vector(n, @typeInfo(@TypeOf(self)).vector.child) = undefined;
     inline for (0..n) |i| result[i] = self[i];
+
     return result;
 }
 
@@ -88,12 +130,20 @@ pub fn descale(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @Ty
     return self / @as(@TypeOf(self), @splat(scalar));
 }
 
+pub fn mod(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+    return @mod(self, @as(@TypeOf(self), @splat(scalar)));
+}
+
 pub fn scale(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
     return self * @as(@TypeOf(self), @splat(scalar));
 }
 
 pub fn add(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
     return self + other;
+}
+
+pub fn abs(self: anytype) @TypeOf(self) {
+    return @abs(self);
 }
 
 pub fn sub(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
@@ -104,7 +154,7 @@ pub fn mul(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
     return self * other;
 }
 
-pub fn dotProduct(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
+pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
     return @reduce(.Add, self * other);
 }
 
@@ -112,31 +162,40 @@ pub fn addProduct(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).
     return @reduce(.Add, self + other);
 }
 
+pub fn crossProduct(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    const info = @typeInfo(@TypeOf(a));
+    if (info.len != 3) @compileError("crossProduct only supports 3D vectors.");
+    return @Vector(3, info.vector.child){
+        a[1] * b[2] - a[2] * b[1], // x = (ay * bz - az * by)
+        a[2] * b[0] - a[0] * b[2], // y = (az * bx - ax * bz)
+        a[0] * b[1] - a[1] * b[0], // z = (ax * by - ay * bx)
+    };
+}
+
 pub fn subProduct(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
     return @reduce(.Add, self - other);
 }
 
-// pub fn descaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
-//     return @reduce(.Add, self / @as(@TypeOf(self), @splat(value)));
-// }
+pub fn compare(a: anytype, b: @TypeOf(a)) bool {
+    return @reduce(.And, a == b);
+}
 
-// pub fn scaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
-//     return @reduce(.Add, self * @as(@TypeOf(self), @splat(value)));
-// }
+pub fn moveTowards(self: anytype, target: @TypeOf(self), step: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+    const direction = target - self;
+    const distanceSq = @reduce(.Add, direction * direction);
+    const stepSq = step * step;
 
-// pub fn crossProduct(a: anytype, b: @TypeOf(a)) !@TypeOf(a) {
-//     const ChildType = @typeInfo(@TypeOf(a)).vector.child;
-//     const vector_length = @typeInfo(@TypeOf(a)).vector.len;
+    if (distanceSq <= stepSq) return target;
 
-//     if (vector_length != 3) return error.InvalidVectorLength;
+    const len = @sqrt(distanceSq);
+    const stepVec = @as(@TypeOf(self), @splat(step / len));
+    return self + direction * stepVec;
+}
 
-//     // Create shuffle indices based on vector length
-//     const a_yzx = @shuffle(ChildType, a, a, [_]i32{ 1, 2, 0 }); // (Ay, Az, Ax)
-//     const b_yzx = @shuffle(ChildType, b, b, [_]i32{ 1, 2, 0 }); // (By, Bz, Bx)
+pub fn descaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
+    return @reduce(.Add, self / @as(@TypeOf(self), @splat(value)));
+}
 
-//     const a_zxy = @shuffle(ChildType, a, a, [_]i32{ 2, 0, 1 }); // (Az, Ax, Ay)
-//     const b_zxy = @shuffle(ChildType, b, b, [_]i32{ 2, 0, 1 }); // (Bz, Bx, By)
-
-//     // Perform element-wise multiplication and subtraction for any vector type
-//     return a_yzx * b_zxy - a_zxy * b_yzx;
-// }
+pub fn scaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
+    return @reduce(.Add, self * @as(@TypeOf(self), @splat(value)));
+}

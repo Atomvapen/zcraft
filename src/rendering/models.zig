@@ -1,5 +1,5 @@
 const std = @import("std");
-const util = @import("../rendering/utilities.zig");
+const root = @import("root");
 const shader = @import("shader.zig");
 const rl = @import("raylib");
 
@@ -15,7 +15,7 @@ pub fn unloadMesh(mesh: rl.Mesh) void {
     if (mesh.vaoId == 0 and mesh.vboId == null) return;
     rl.gl.rlUnloadVertexArray(@intCast(mesh.vaoId));
     for (0..7) |i| rl.gl.rlUnloadVertexBuffer(@intCast(mesh.vboId[@intCast(i)]));
-    util.allocator.free(mesh.vboId[0..9]);
+    root.allocator.free(mesh.vboId[0..9]);
 }
 
 pub fn uploadMesh(mesh: *rl.Mesh, verts: [*]u32) void {

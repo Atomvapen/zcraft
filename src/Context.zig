@@ -1,22 +1,29 @@
 const Self = @This();
-
 const std = @import("std");
 const Player = @import("player/player.zig").Player;
 const map = @import("map/world.zig");
-const utilities = @import("rendering/utilities.zig");
-
 const rl = @import("raylib");
-const GameState = enum { Menu, Playing, Settings, Exiting };
 
 allocator: std.mem.Allocator,
 time: f64 = 0,
 deltatime: f64 = 0,
 player: *Player = undefined,
-state: GameState = .Menu,
-prevState: GameState = .Menu,
-debug: bool = false,
-settings: struct { volume: f32 = 70, reverseScrolling: bool = true, renderDistance: f32 = 5 } = .{},
+state: State = .{},
+settings: Settings = .{},
 generated: bool = false,
+
+const State = struct {
+    const GameState = enum { None, Menu, Playing, Settings, Exiting };
+    current: GameState = .Menu,
+    previous: GameState = .None,
+};
+
+const Settings = struct {
+    volume: f32 = 70,
+    reverseScrolling: bool = true,
+    renderDistance: f32 = 5,
+    debug: bool = false,
+};
 
 pub fn create(allocator: std.mem.Allocator) !*Self {
     const context: *Self = try allocator.create(Self);
@@ -30,7 +37,6 @@ pub fn create(allocator: std.mem.Allocator) !*Self {
 }
 
 pub fn destroy(self: *Self, allocator: std.mem.Allocator) void {
-    utilities.unloadTexture();
     self.player.destroy(self);
     allocator.destroy(self);
 }
@@ -38,7 +44,7 @@ pub fn destroy(self: *Self, allocator: std.mem.Allocator) void {
 pub fn update(self: *Self) !void {
     self.keybinds();
 
-    if (self.state == .Playing) {
+    if (self.state.current == .Playing) {
         self.deltatime = @floatCast(rl.getFrameTime());
         try self.player.update(self);
         map.Map.update();
@@ -49,9 +55,9 @@ fn keybinds(self: *Self) void {
     const shader = @import("rendering/shader.zig");
 
     switch (rl.getKeyPressed()) {
-        .f3 => self.debug = !self.debug,
+        .f3 => self.settings.debug = !self.settings.debug,
         .f11 => rl.toggleFullscreen(),
-        .escape => self.state = .Settings,
+        .escape => self.state.current = .Settings,
         else => {},
     }
 

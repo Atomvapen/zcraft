@@ -1,20 +1,20 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const std = @import("std");
 
-// const State = enum {
-//     disabled,
-//     default,
-// };
+const State = enum {
+    disabled,
+    default,
+};
 
 pos: rl.Rectangle,
-// state: State = .default,
+state: State = .default,
 texture: rl.Texture,
 
-pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, texture: rl.Texture) !*Self {
-    const image: *Self = try allocator.create(Self);
+pub fn create(pos: rl.Rectangle, texture: rl.Texture) !*Self {
+    const image: *Self = try root.allocator.create(Self);
 
     image.* = .{
         .pos = pos,
@@ -24,8 +24,8 @@ pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, texture: rl.Textu
     return image;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *const Self) void {

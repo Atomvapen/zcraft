@@ -1,21 +1,21 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const std = @import("std");
 
-// const State = enum {
-//     disabled,
-//     default,
-// };
+const State = enum {
+    disabled,
+    default,
+};
 
 pos: rl.Rectangle,
-// state: State = .default,
+state: State = .default,
 topColor: rl.Color,
 botColor: rl.Color,
 
-pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, topColor: rl.Color, botColor: rl.Color) !*Self {
-    const gradiant: *Self = try allocator.create(Self);
+pub fn create(pos: rl.Rectangle, topColor: rl.Color, botColor: rl.Color) !*Self {
+    const gradiant: *Self = try root.allocator.create(Self);
 
     gradiant.* = .{
         .pos = pos,
@@ -26,8 +26,8 @@ pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, topColor: rl.Colo
     return gradiant;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *const Self) void {

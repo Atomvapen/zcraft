@@ -1,5 +1,5 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const std = @import("std");
@@ -17,8 +17,8 @@ fontSize: i32,
 value: *bool = undefined,
 state: State = .default,
 
-pub fn create(allocator: std.mem.Allocator, text: [:0]const u8, fontSize: i32, pos: rl.Rectangle, value: *bool) !*Self {
-    const checkBox: *Self = try allocator.create(Self);
+pub fn create(text: [:0]const u8, fontSize: i32, pos: rl.Rectangle, value: *bool) !*Self {
+    const checkBox: *Self = try root.allocator.create(Self);
 
     checkBox.* = .{
         .pos = pos,
@@ -30,8 +30,8 @@ pub fn create(allocator: std.mem.Allocator, text: [:0]const u8, fontSize: i32, p
     return checkBox;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

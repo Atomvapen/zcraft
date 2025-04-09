@@ -1,14 +1,19 @@
 const rl = @import("raylib");
-const std = @import("std");
+// const std = @import("std");
 const map = @import("../map/world.zig");
 const Context = @import("../Context.zig");
 const shader = @import("../rendering/shader.zig");
 const gui = @import("../gui/gui.zig");
 const Inventory = @import("../player/Inventory.zig");
 const Hotbar = @import("../player/Hotbar.zig");
+const vec = @import("../math/vec.zig");
+const Vec3f = vec.Vec3f;
+const Vec3i = vec.Vec3i;
 
 pub const Player = struct {
     const Self = @This();
+    const Stats = struct { stamina: f32 = 100, speed: f32 = 0, health: i32 = 100 };
+    const MovementState = enum { default, crouching, sprinting, swimming, flying };
 
     camera: rl.Camera3D = rl.Camera3D{
         .position = .{ .x = 1.0, .y = 40.0, .z = 1.0 },
@@ -17,20 +22,13 @@ pub const Player = struct {
         .fovy = 90.0,
         .projection = rl.CameraProjection.perspective,
     },
-
     pos: rl.Vector3 = .{ .x = 1.0, .y = 40.0, .z = 1.0 },
     vel: rl.Vector3 = undefined,
-
     onGround: bool = false,
-    stats: struct {
-        stamina: f32 = 100,
-        // speed: f32 = 0,
-        health: i32 = 100,
-    } = .{},
-    // movementState: enum { default, crouching, sprinting, swimming, flying },
+    stats: Stats = .{},
+    // movementState: MovementState = .default,
     spritning: bool = false,
     crouching: bool = false,
-    speed: f32 = 0,
     hotbar: Hotbar = .{},
     inventory: Inventory = .{},
 
@@ -78,16 +76,16 @@ pub const Player = struct {
     }
 
     fn updateMap(self: *Player, ctx: *Context) !void {
-        const chunkPos = map.toChunkPos(.{ .x = self.camera.position.x, .y = 0, .z = self.camera.position.z });
+        const chunkPos: Vec3i = map.toChunkPos(.{ @intFromFloat(self.camera.position.x), 0, @intFromFloat(self.camera.position.z) });
 
         // const renderDistance: i32 = 5;
         const renderDistance: i32 = @intFromFloat(ctx.settings.renderDistance);
         for (0..@intCast(renderDistance)) |i| {
             for (0..@intCast(renderDistance)) |y| {
-                try map.Generate.generate(.{
-                    .x = @floatFromInt(@as(i32, @intFromFloat(chunkPos.x)) + @as(i32, @intCast(i)) - @divTrunc(renderDistance, 2)),
-                    .y = 0,
-                    .z = @floatFromInt(@as(i32, @intFromFloat(chunkPos.z)) + @as(i32, @intCast(y)) - @divTrunc(renderDistance, 2)),
+                try map.Generate.generateChunk(.{
+                    chunkPos[0] + @as(i32, @intCast(i)) - @divTrunc(renderDistance, 2),
+                    0,
+                    chunkPos[2] + @as(i32, @intCast(y)) - @divTrunc(renderDistance, 2),
                 });
             }
         }
@@ -97,7 +95,7 @@ pub const Player = struct {
         try self.updateMap(ctx);
         try self.handleKeybindings(ctx);
 
-        rl.updateCamera(&self.camera, rl.CameraMode.free);
+        // rl.updateCamera(&self.camera, rl.CameraMode.free);
         self.applyGravity(@floatCast(ctx.deltatime));
         self.movePlayer(@floatCast(ctx.deltatime));
         self.updatePos(@floatCast(ctx.deltatime));
@@ -105,7 +103,7 @@ pub const Player = struct {
 
     fn sprint(self: *Self) !void {
         if (rl.isKeyDown(.left_shift) and !(self.stats.stamina <= 10)) {
-            self.speed *= 1.5;
+            self.stats.speed *= 1.5;
             self.stats.stamina -= 0.02;
             self.camera.fovy = 100;
         } else {
@@ -116,30 +114,29 @@ pub const Player = struct {
     }
 
     fn movePlayer(self: *Self, deltaTime: f32) void {
-        self.speed = 15.0 * deltaTime * 0.5;
+        self.stats.speed = 15.0 * deltaTime * 0.5;
 
         const forward = rl.Vector3.normalize(self.camera.target.subtract(self.camera.position));
         const right = rl.Vector3.normalize(rl.Vector3.crossProduct(rl.Vector3{ .x = 0.0, .y = 1.0, .z = 0.0 }, forward));
-
         var new_pos = self.pos;
 
         if (forward.x != 0 and forward.z != 0) self.sprint() catch {};
 
         if (rl.isKeyDown(.w)) {
-            new_pos.x += forward.x * self.speed;
-            new_pos.z += forward.z * self.speed;
+            new_pos.x += forward.x * self.stats.speed;
+            new_pos.z += forward.z * self.stats.speed;
         }
         if (rl.isKeyDown(.s)) {
-            new_pos.x -= forward.x * self.speed;
-            new_pos.z -= forward.z * self.speed;
+            new_pos.x -= forward.x * self.stats.speed;
+            new_pos.z -= forward.z * self.stats.speed;
         }
         if (rl.isKeyDown(.d)) {
-            new_pos.x -= right.x * self.speed;
-            new_pos.z -= right.z * self.speed;
+            new_pos.x -= right.x * self.stats.speed;
+            new_pos.z -= right.z * self.stats.speed;
         }
         if (rl.isKeyDown(.a)) {
-            new_pos.x += right.x * self.speed;
-            new_pos.z += right.z * self.speed;
+            new_pos.x += right.x * self.stats.speed;
+            new_pos.z += right.z * self.stats.speed;
         }
 
         if (rl.isKeyPressed(.space) and self.onGround) {
@@ -154,8 +151,7 @@ pub const Player = struct {
         if (!self.onGround) self.vel.y += 9.8 * deltaTime * 0.002;
     }
 
-    //TODO vad gör ens denna??
-    fn updatePos(self: *Self, deltaTime: f32) void {
+    fn updatePos(self: *Self, deltaTime: f32) void { //TODO vad gör ens denna??
         const scalar: f32 = 0.0001;
 
         var newPos: rl.Vector3 = self.pos;
@@ -173,12 +169,10 @@ pub const Player = struct {
     }
 
     pub fn render2D(self: *Self, ctx: *Context) !void {
-        _ = self;
         const Component = gui.Component;
-        // Refactor out of player?
-        if (gui.DrawBuffer.list.items.len == 0) {
-            gui.DrawBuffer.append(Component{ .hotbar = try .create(ctx.allocator, &ctx.player.hotbar.selection, ctx) });
-            gui.DrawBuffer.append(Component{ .crosshair = try .create(ctx.allocator, 10) });
+        if (gui.DrawBuffer.list.items.len == 0) { // Refactor out of player?
+            gui.DrawBuffer.append(Component{ .hotbar = try .create(&self.hotbar.selection, ctx) });
+            gui.DrawBuffer.append(Component{ .crosshair = try .create(10) });
         }
     }
 
@@ -191,49 +185,34 @@ pub const Player = struct {
             shader.lightCam.target.z = self.camera.position.z + 0.001;
         }
 
-        if (Collision.sendRayCameraTarget(self) != null) {
-            rl.drawCube(Collision.sendRayCameraTarget(self).?, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
+        if (Collision.sendRayCameraTarget(self)) |hit| {
+            const pos: rl.Vector3 = vec.rlTransform(@round(hit.position), rl.Vector3);
+            rl.drawCube(pos, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
         }
     }
 
     pub fn placeBlock(self: *Self) !void {
-        if (Collision.sendRayNormal(self)) |hit| {
-            { //TODO FIX
-                const hit_size = rl.Vector3{ .x = 1, .y = 1, .z = 1 }; // Adjust based on hitbox
-                const player_size = rl.Vector3{ .x = 1, .y = 2, .z = 1 }; // Example player size
-                var hit1: rl.Vector3 = hit[0];
-                const hit2: rl.Vector3 = hit[0];
-
-                hit1.y += 1; // Moving the hitbox down
-
-                if (Collision.isIntersectingAABB(hit1, hit_size, self.pos, player_size)) return;
-                if (Collision.isIntersectingAABB(hit2, hit_size, self.pos, player_size)) return;
-            }
-
-            const hitPos: rl.Vector3 = hit[0]; // Block position
-            const hitNormal: rl.Vector3 = hit[1]; // Correct face normal
-
-            const newBlockPos: rl.Vector3 = .{
-                .x = @round(hitPos.x + hitNormal.x),
-                .y = @round(hitPos.y + hitNormal.y),
-                .z = @round(hitPos.z + hitNormal.z),
-            };
-
-            try map.Map.setBlockUpdate(newBlockPos, self.hotbar.items[self.hotbar.selection]);
+        if (Collision.sendRayCameraTarget(self)) |hit| { // TODO: Self Collision
+            const pos: Vec3i = vec.transform(@round(hit.position + hit.normal), Vec3i);
+            try map.Map.setBlockUpdate(pos, self.hotbar.items[self.hotbar.selection]);
         }
     }
 
     pub fn breakBlock(self: *Self) !void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            try map.Map.setBlockUpdate(hit, 0);
-            // if (map.Map.getChunkRelativePos(hit)) |c| c.setBlockUpdate(hit, 0);
+            const pos: Vec3i = vec.transform(@round(hit.position), Vec3i);
+            try map.Map.setBlockUpdate(pos, 0);
         }
     }
 
     pub fn getBlock(self: *Self) void {
         if (Collision.sendRayCameraTarget(self)) |hit| {
-            if (map.Map.getChunk(map.toChunkPos(hit))) |c| self.hotbar.items[self.hotbar.selection] = c.getBlock(hit);
-            // why ChunkPos needed?
+            const pos: Vec3i = vec.transform(@round(hit.position), Vec3i);
+            if (map.Map.getChunk(map.toChunkPos(pos))) |c| {
+                const block: u8 = c.getBlock(pos);
+                // if (!self.inventory.contains(block)) return;
+                self.hotbar.items[self.hotbar.selection] = block;
+            }
         }
     }
 
@@ -243,7 +222,7 @@ pub const Player = struct {
         // Check X movement for collisions with blocks on the side
         var can_move_x = true;
         for (check_offsets) |offset| {
-            if (map.Map.getBlock(.{ .x = @round(pos.x), .y = @round(self.pos.y + offset), .z = @round(self.pos.z) }) != 0) {
+            if (map.Map.getBlock(vec.rlTransform(rl.Vector3{ .x = @round(pos.x), .y = @round(self.pos.y + offset), .z = @round(self.pos.z) }, Vec3i)) != 0) {
                 can_move_x = false;
                 break;
             }
@@ -255,11 +234,12 @@ pub const Player = struct {
         // Check Z movement for collisions with blocks on the side
         var can_move_z = true;
         for (check_offsets) |offset| {
-            if (map.Map.getBlock(.{ .x = @round(self.pos.x), .y = @round(self.pos.y + offset), .z = @round(pos.z) }) != 0) {
+            if (map.Map.getBlock(vec.rlTransform(rl.Vector3{ .x = @round(self.pos.x), .y = @round(self.pos.y + offset), .z = @round(pos.z) }, Vec3i)) != 0) {
                 can_move_z = false;
                 break;
             }
         }
+
         if (can_move_z) {
             self.pos.z = pos.z;
         }
@@ -278,7 +258,7 @@ pub const Player = struct {
         //     self.pos.y -= self.vel.y;
         // }
 
-        if (Collision.sendRayDirection(self, .down, 16)) |r| {
+        if (Collision.sendRayPlayerDirection(self, .down, 16)) |r| {
             _ = r;
 
             // If the player was falling, now they're on the ground
@@ -299,108 +279,46 @@ pub const Player = struct {
 };
 
 const Collision = struct {
-    fn isIntersectingAABB(pos1: rl.Vector3, size1: rl.Vector3, pos2: rl.Vector3, size2: rl.Vector3) bool {
-        return (pos1.x < pos2.x + size2.x and pos1.x + size1.x > pos2.x) and
-            (pos1.y < pos2.y + size2.y and pos1.y + size1.y > pos2.y) and
-            (pos1.z < pos2.z + size2.z and pos1.z + size1.z > pos2.z);
+    fn sendRayCameraTarget(player: *Player) ?struct { position: Vec3f, normal: Vec3f } {
+        const step_amount: f32 = 0.05;
+        const max_distance: f32 = 5.0;
+        var distance: f32 = 0.0;
+
+        const camera_pos: Vec3f = vec.rlTransform(player.camera.position, Vec3f);
+        const target_pos: Vec3f = vec.rlTransform(player.camera.target, Vec3f);
+        var previous_pos: Vec3f = @round(camera_pos);
+
+        const ray_dir: Vec3f = vec.normalize(target_pos - camera_pos);
+
+        while (distance < max_distance) : (distance += step_amount) {
+            const current_pos = @round(camera_pos + vec.scale(ray_dir, distance));
+            if (!vec.compare(current_pos, previous_pos)) {
+                if (map.Map.getBlock(vec.transform(current_pos, Vec3i)) != 0) {
+                    const normal: Vec3f = previous_pos - current_pos;
+                    return .{ .position = current_pos, .normal = normal };
+                }
+                previous_pos = current_pos;
+            }
+        }
+        return null;
     }
 
-    fn sendRayCameraTarget(player: *Player) ?rl.Vector3 {
-        const amount: usize = 50;
+    fn sendRayPlayerDirection(player: *Player, Direction: enum { up, down, left, right, forward, backward }, distance: usize) ?Vec3f {
         const stepAmount: f32 = 0.1;
 
-        for (0..amount) |i| {
-            const distance = @as(f32, @floatFromInt(i)) * stepAmount;
-
-            var pos = rl.Vector3.moveTowards(player.camera.position, player.camera.target, distance);
-            pos = .{ .x = @round(pos.x), .y = @round(pos.y), .z = @round(pos.z) };
-
-            if (map.Map.getBlock(pos) != 0) return pos;
-        }
-
-        return null;
-    }
-
-    fn sendRayNormal(player: *Player) ?struct { rl.Vector3, rl.Vector3 } {
-        const max_distance: f32 = 4.0; // Max ray distance
-        const ray_dir = rl.Vector3.normalize(player.camera.target.subtract(player.camera.position));
-
-        // Start position (rounded to voxel grid center)
-        var pos: rl.Vector3 = .{
-            .x = @round(player.camera.position.x),
-            .y = @round(player.camera.position.y),
-            .z = @round(player.camera.position.z),
-        };
-
-        const step: rl.Vector3 = .{
-            .x = if (ray_dir.x > 0) 1 else -1,
-            .y = if (ray_dir.y > 0) 1 else -1,
-            .z = if (ray_dir.z > 0) 1 else -1,
-        };
-
-        var t_max: rl.Vector3 = .{
-            .x = if (ray_dir.x != 0) (@abs((pos.x + step.x - player.camera.position.x) / ray_dir.x)) else 9999,
-            .y = if (ray_dir.y != 0) (@abs((pos.y + step.y - player.camera.position.y) / ray_dir.y)) else 9999,
-            .z = if (ray_dir.z != 0) (@abs((pos.z + step.z - player.camera.position.z) / ray_dir.z)) else 9999,
-        };
-
-        const t_delta: rl.Vector3 = .{
-            .x = if (ray_dir.x != 0) @abs(1 / ray_dir.x) else 9999,
-            .y = if (ray_dir.y != 0) @abs(1 / ray_dir.y) else 9999,
-            .z = if (ray_dir.z != 0) @abs(1 / ray_dir.z) else 9999,
-        };
-
-        var normal: rl.Vector3 = rl.Vector3{ .x = 0, .y = 0, .z = 0 };
-
-        while (@abs(pos.x - player.camera.position.x) < max_distance and
-            @abs(pos.y - player.camera.position.y) < max_distance and
-            @abs(pos.z - player.camera.position.z) < max_distance)
-        {
-            // Check for block hit
-            if (map.Map.getBlock(pos) != 0) {
-                // Return the position of the hit and the normal for placement
-                return .{ pos, normal };
-            }
-
-            // Move to the next voxel along the ray
-            if (t_max.x < t_max.y and t_max.x < t_max.z) {
-                pos.x += step.x;
-                t_max.x += t_delta.x;
-                normal = .{ .x = -step.x, .y = 0, .z = 0 }; // X-axis normal
-            } else if (t_max.y < t_max.z) {
-                pos.y += step.y;
-                t_max.y += t_delta.y;
-                normal = .{ .x = 0, .y = -step.y, .z = 0 }; // Y-axis normal
-            } else {
-                pos.z += step.z;
-                t_max.z += t_delta.z;
-                normal = .{ .x = 0, .y = 0, .z = -step.z }; // Z-axis normal
-            }
-        }
-
-        return null;
-    }
-
-    fn sendRayDirection(player: *Player, Direction: enum { up, down, left, right, forward, backward }, amount: usize) ?rl.Vector3 {
-        // const amount: i32 = 16;
-        const step: f32 = 0.1;
-
         for (0..distance) |i| {
-            const stepAmount = @as(f32, @floatFromInt(i)) * step;
+            const step = @as(f32, @floatFromInt(i)) * stepAmount;
             var pos: Vec3f = vec.rlTransform(player.camera.position, Vec3f);
             switch (Direction) {
-                .down => pos.y -= distance,
-                .up => pos.y += distance,
-                .left => pos.x -= distance, // Assuming left modifies x
-                .right => pos.x += distance, // Assuming right modifies x
-                .forward => pos.z -= distance, // Forward moves along negative z
-                .backward => pos.z += distance, // Backward moves along positive z
+                .down => pos[1] -= step,
+                .up => pos[1] += step,
+                .left => pos[0] -= step,
+                .right => pos[0] += step,
+                .forward => pos[2] -= step,
+                .backward => pos[2] += step,
             }
-
-            // var pos = rl.Vector3.moveTowards(self.camera.position, vec, distance);
-            pos = .{ .x = @round(pos.x), .y = @round(pos.y), .z = @round(pos.z) };
-
-            if (map.Map.getBlock(pos) != 0) return pos;
+            pos = @round(pos);
+            if (map.Map.getBlock(vec.transform(pos, Vec3i)) != 0) return pos;
         }
 
         return null;

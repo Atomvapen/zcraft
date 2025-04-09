@@ -10,6 +10,10 @@ const maxBlockCount: usize = std.math.maxInt(maxBlockType);
 
 pub var sprite: rl.Texture2D = undefined;
 
+const vec = @import("../math/vec.zig");
+const Vec3f = vec.Vec3f;
+const Vec3i = vec.Vec3i;
+
 var transparent: [maxBlockCount]bool = undefined;
 var solid: [maxBlockCount]bool = undefined;
 var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
@@ -134,14 +138,14 @@ pub const Neighbor = enum(u3) {
         return @enumFromInt(b);
     }
 
-    pub inline fn relPos(self: Neighbor) rl.Vector3 {
+    pub inline fn relPos(self: Neighbor) Vec3i {
         return switch (self) {
-            .posY => .{ .x = 0, .y = 1, .z = 0 },
-            .negY => .{ .x = 0, .y = -1, .z = 0 },
-            .posX => .{ .x = 1, .y = 0, .z = 0 },
-            .negX => .{ .x = -1, .y = 0, .z = 0 },
-            .posZ => .{ .x = 0, .y = 0, .z = 1 },
-            .negZ => .{ .x = 0, .y = 0, .z = -1 },
+            .posY => .{ 0, 1, 0 },
+            .negY => .{ 0, -1, 0 },
+            .posX => .{ 1, 0, 0 },
+            .negX => .{ -1, 0, 0 },
+            .posZ => .{ 0, 0, 1 },
+            .negZ => .{ 0, 0, -1 },
         };
     }
 
@@ -156,14 +160,16 @@ pub const Neighbor = enum(u3) {
         };
     }
 
-    pub inline fn getVerts(self: Neighbor, bc: rl.Vector3) [12]f32 {
+    pub inline fn getVerts(self: Neighbor, bci: Vec3i) [12]f32 {
+        const bc: Vec3f = vec.transform(bci, Vec3f);
+
         return switch (self) {
-            .posY => .{ bc.x, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
-            .negY => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x, bc.y, bc.z + 1 },
-            .posZ => .{ bc.x, bc.y, bc.z + 1, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z + 1 },
-            .negZ => .{ bc.x, bc.y, bc.z, bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y + 1, bc.z, bc.x, bc.y + 1, bc.z },
-            .posX => .{ bc.x + 1, bc.y, bc.z, bc.x + 1, bc.y, bc.z + 1, bc.x + 1, bc.y + 1, bc.z + 1, bc.x + 1, bc.y + 1, bc.z },
-            .negX => .{ bc.x, bc.y, bc.z, bc.x, bc.y, bc.z + 1, bc.x, bc.y + 1, bc.z + 1, bc.x, bc.y + 1, bc.z },
+            .posY => .{ bc[0], bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },
+            .negY => .{ bc[0], bc[1], bc[2], bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1], bc[2] + 1, bc[0], bc[1], bc[2] + 1 },
+            .posZ => .{ bc[0], bc[1], bc[2] + 1, bc[0] + 1, bc[1], bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0], bc[1] + 1, bc[2] + 1 },
+            .negZ => .{ bc[0], bc[1], bc[2], bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] },
+            .posX => .{ bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1], bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },
+            .negX => .{ bc[0], bc[1], bc[2], bc[0], bc[1], bc[2] + 1, bc[0], bc[1] + 1, bc[2] + 1, bc[0], bc[1] + 1, bc[2] },
         };
     }
 

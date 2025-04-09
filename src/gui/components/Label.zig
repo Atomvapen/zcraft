@@ -1,5 +1,5 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const std = @import("std");
@@ -22,8 +22,8 @@ alignment: Alignment = Alignment.center,
 state: State = .default,
 color: rl.Color = undefined,
 
-pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, text: [:0]const u8, fontSize: i32, alignment: Alignment, color: rl.Color) !*Self {
-    const label: *Self = try allocator.create(Self);
+pub fn create(pos: rl.Rectangle, text: [:0]const u8, fontSize: i32, alignment: Alignment, color: rl.Color) !*Self {
+    const label: *Self = try root.allocator.create(Self);
 
     label.* = .{
         .pos = pos,
@@ -36,8 +36,8 @@ pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, text: [:0]const u
     return label;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *const Self) void {

@@ -1,16 +1,14 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
-const blocks = @import("../../map/blocks.zig");
 const std = @import("std");
-const Context = @import("../../Context.zig");
 
 visible: bool = true,
 size: i32,
 
-pub fn create(allocator: std.mem.Allocator, size: i32) !*Self {
-    const crosshair: *Self = try allocator.create(Self);
+pub fn create(size: i32) !*Self {
+    const crosshair: *Self = try root.allocator.create(Self);
 
     crosshair.* = .{
         .size = size,
@@ -19,8 +17,8 @@ pub fn create(allocator: std.mem.Allocator, size: i32) !*Self {
     return crosshair;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

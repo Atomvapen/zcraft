@@ -5,81 +5,66 @@ const map = @import("../map/world.zig");
 const chunkSize = map.chunkSize;
 const Vec4f = vec.Vec4f;
 const Vec3f = vec.Vec3f;
-const FrustumPlanes = enum { Back, Front, Bottom, Top, Right, Left, MAX };
+const Vec3i = vec.Vec3i;
 
-fn extractFrustum(frustum: *[6]Vec4f) void {
-    const projection = rl.gl.rlGetMatrixProjection();
-    const modelview = rl.gl.rlGetMatrixModelview();
+const Frustum = struct {
+    const Planes = enum { Far, Near, Bottom, Top, Right, Left };
 
-    var planes: rl.Matrix = undefined;
+    planes: [6]Vec4f,
 
-    planes.m0 = modelview.m0 * projection.m0 + modelview.m1 * projection.m4 + modelview.m2 * projection.m8 + modelview.m3 * projection.m12;
-    planes.m1 = modelview.m0 * projection.m1 + modelview.m1 * projection.m5 + modelview.m2 * projection.m9 + modelview.m3 * projection.m13;
-    planes.m2 = modelview.m0 * projection.m2 + modelview.m1 * projection.m6 + modelview.m2 * projection.m10 + modelview.m3 * projection.m14;
-    planes.m3 = modelview.m0 * projection.m3 + modelview.m1 * projection.m7 + modelview.m2 * projection.m11 + modelview.m3 * projection.m15;
-    planes.m4 = modelview.m4 * projection.m0 + modelview.m5 * projection.m4 + modelview.m6 * projection.m8 + modelview.m7 * projection.m12;
-    planes.m5 = modelview.m4 * projection.m1 + modelview.m5 * projection.m5 + modelview.m6 * projection.m9 + modelview.m7 * projection.m13;
-    planes.m6 = modelview.m4 * projection.m2 + modelview.m5 * projection.m6 + modelview.m6 * projection.m10 + modelview.m7 * projection.m14;
-    planes.m7 = modelview.m4 * projection.m3 + modelview.m5 * projection.m7 + modelview.m6 * projection.m11 + modelview.m7 * projection.m15;
-    planes.m8 = modelview.m8 * projection.m0 + modelview.m9 * projection.m4 + modelview.m10 * projection.m8 + modelview.m11 * projection.m12;
-    planes.m9 = modelview.m8 * projection.m1 + modelview.m9 * projection.m5 + modelview.m10 * projection.m9 + modelview.m11 * projection.m13;
-    planes.m10 = modelview.m8 * projection.m2 + modelview.m9 * projection.m6 + modelview.m10 * projection.m10 + modelview.m11 * projection.m14;
-    planes.m11 = modelview.m8 * projection.m3 + modelview.m9 * projection.m7 + modelview.m10 * projection.m11 + modelview.m11 * projection.m15;
-    planes.m12 = modelview.m12 * projection.m0 + modelview.m13 * projection.m4 + modelview.m14 * projection.m8 + modelview.m15 * projection.m12;
-    planes.m13 = modelview.m12 * projection.m1 + modelview.m13 * projection.m5 + modelview.m14 * projection.m9 + modelview.m15 * projection.m13;
-    planes.m14 = modelview.m12 * projection.m2 + modelview.m13 * projection.m6 + modelview.m14 * projection.m10 + modelview.m15 * projection.m14;
-    planes.m15 = modelview.m12 * projection.m3 + modelview.m13 * projection.m7 + modelview.m14 * projection.m11 + modelview.m15 * projection.m15;
+    pub fn extract(viewProj: rl.Matrix) Frustum {
+        const r0: Vec4f = .{ viewProj.m0, viewProj.m4, viewProj.m8, viewProj.m12 };
+        const r1: Vec4f = .{ viewProj.m1, viewProj.m5, viewProj.m9, viewProj.m13 };
+        const r2: Vec4f = .{ viewProj.m2, viewProj.m6, viewProj.m10, viewProj.m14 };
+        const r3: Vec4f = .{ viewProj.m3, viewProj.m7, viewProj.m11, viewProj.m15 };
 
-    frustum[@intFromEnum(FrustumPlanes.Right)] = .{ planes.m3 - planes.m0, planes.m7 - planes.m4, planes.m11 - planes.m8, planes.m15 - planes.m12 };
-    frustum[@intFromEnum(FrustumPlanes.Right)] = vec.normalize(frustum[@intFromEnum(FrustumPlanes.Right)]);
+        var self: Frustum = undefined;
+        self.planes[@intFromEnum(Planes.Right)] = vec.normalize(r3 - r0);
+        self.planes[@intFromEnum(Planes.Left)] = vec.normalize(r3 + r0);
+        self.planes[@intFromEnum(Planes.Top)] = vec.normalize(r3 - r1);
+        self.planes[@intFromEnum(Planes.Bottom)] = vec.normalize(r3 + r1);
+        self.planes[@intFromEnum(Planes.Far)] = vec.normalize(r3 - r2);
+        self.planes[@intFromEnum(Planes.Near)] = vec.normalize(r3 + r2);
+        return self;
+    }
 
-    frustum[@intFromEnum(FrustumPlanes.Left)] = .{ planes.m3 + planes.m0, planes.m7 + planes.m4, planes.m11 + planes.m8, planes.m15 + planes.m12 };
-    frustum[@intFromEnum(FrustumPlanes.Left)] = vec.normalize(frustum[@intFromEnum(FrustumPlanes.Left)]);
+    pub fn isAABBInside(self: *const Frustum, pos: Vec3f, dim: Vec3f) bool {
+        const half: Vec3f = @splat(0.5);
+        inline for (self.planes) |plane| {
+            const normal: Vec3f = @shuffle(f32, plane, undefined, [_]i32{ 0, 1, 2 });
+            const plane_offset = plane[3];
+            var dist = @reduce(.Add, normal * pos);
+            dist += @reduce(.Add, @abs(normal) * dim * half);
+            if (dist + plane_offset < 0) return false;
+        }
+        return true;
+    }
 
-    frustum[@intFromEnum(FrustumPlanes.Top)] = .{ planes.m3 - planes.m1, planes.m7 - planes.m5, planes.m11 - planes.m9, planes.m15 - planes.m13 };
-    frustum[@intFromEnum(FrustumPlanes.Top)] = vec.normalize(frustum[@intFromEnum(FrustumPlanes.Top)]);
+    pub fn isAABBCrossing(self: *const Frustum, min: Vec3f, max: Vec3f) bool {
+        const half: Vec3f = @splat(0.5);
+        const center = (min + max) * half;
+        const extent = (max - min) * half;
+        inline for (self.planes) |plane| {
+            const normal: Vec3f = @shuffle(f32, plane, undefined, [_]i32{ 0, 1, 2 });
+            const plane_offset = plane[3];
+            var dist = @reduce(.Add, normal * center) + plane_offset;
+            dist += @reduce(.Add, extent * @abs(normal));
+            if (dist < 0) return false;
+        }
+        return true;
+    }
+};
 
-    frustum[@intFromEnum(FrustumPlanes.Bottom)] = .{ planes.m3 + planes.m1, planes.m7 + planes.m5, planes.m11 + planes.m9, planes.m15 + planes.m13 };
-    frustum[@intFromEnum(FrustumPlanes.Bottom)] = vec.normalize(frustum[@intFromEnum(FrustumPlanes.Bottom)]);
-
-    frustum[@intFromEnum(FrustumPlanes.Back)] = .{ planes.m3 - planes.m2, planes.m7 - planes.m6, planes.m11 - planes.m10, planes.m15 - planes.m14 };
-    frustum[@intFromEnum(FrustumPlanes.Back)] = vec.normalize(frustum[@intFromEnum(FrustumPlanes.Back)]);
-
-    frustum[@intFromEnum(FrustumPlanes.Front)] = .{ planes.m3 + planes.m2, planes.m7 + planes.m6, planes.m11 + planes.m10, planes.m15 + planes.m14 };
-    frustum[@intFromEnum(FrustumPlanes.Front)] = vec.normalize(frustum[@intFromEnum(FrustumPlanes.Front)]);
-}
-
-pub fn isChunkVisible(position: rl.Vector3) bool {
-    const pos: Vec3f = .{ position.x, position.y, position.z };
+pub fn isChunkVisible(pos: Vec3i) bool {
     const offset: Vec3f = @splat(0.5);
     const chunk: Vec3f = @splat(chunkSize);
-    const min: Vec3f = vec.sub(pos, offset);
-    const max: Vec3f = vec.add(vec.add(min, chunk), offset);
+    const min: Vec3f = vec.sub(vec.transform(pos, Vec3f), offset);
+    const max: Vec3f = vec.add(min, chunk + offset);
+    const projection: rl.Matrix = rl.gl.rlGetMatrixProjection();
+    const modelview: rl.Matrix = rl.gl.rlGetMatrixModelview();
+    const viewProj: rl.Matrix = rl.Matrix.multiply(modelview, projection);
 
-    var planes: [6]Vec4f = undefined;
-    extractFrustum(&planes);
-
-    if (isAABBInside(planes, min, max)) return true;
-    return isAABBCrossing(planes, min, max);
-}
-
-pub fn isAABBInside(frustum: [6]Vec4f, pos: Vec3f, dim: Vec3f) bool {
-    inline for (frustum) |plane| {
-        var dist = plane[0] * pos[0] + plane[1] * pos[1] + plane[2] * pos[2] + plane[3];
-        const normDim: Vec3f = .{ dim[0] * @abs(plane[0]), dim[1] * @abs(plane[1]), dim[2] * @abs(plane[2]) };
-        const vec0: Vec3f = @splat(0);
-        dist += @reduce(.Add, @max(vec0, normDim));
-        if (dist < 0) return false;
-    }
-    return true;
-}
-
-pub fn isAABBCrossing(frustum: [6]Vec4f, min: Vec3f, max: Vec3f) bool {
-    inline for (frustum) |plane| {
-        var dist = plane[0] * (min[0] + max[0]) * 0.5 + plane[1] * (min[1] + max[1]) * 0.5 + plane[2] * (min[2] + max[2]) * 0.5 + plane[3];
-        const normDim: Vec3f = .{ (max[0] - min[0]) * @abs(plane[0]) * 0.5, (max[1] - min[1]) * @abs(plane[1]) * 0.5, (max[2] - min[2]) * @abs(plane[2]) * 0.5 };
-        dist += @reduce(.Add, normDim);
-        if (dist < 0) return false;
-    }
-    return true;
+    const frustum: Frustum = Frustum.extract(viewProj);
+    if (frustum.isAABBInside(min, max)) return true;
+    return frustum.isAABBCrossing(min, max);
 }

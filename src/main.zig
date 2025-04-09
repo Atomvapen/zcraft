@@ -7,9 +7,13 @@ const gui = @import("gui/gui.zig");
 const blocks = @import("map/blocks.zig");
 const map = @import("map/world.zig");
 
+var gpa: std.heap.DebugAllocator(.{}) = std.heap.DebugAllocator(.{}).init;
+pub const allocator: std.mem.Allocator = gpa.allocator(); // main game allocator
+// pub const allocator: std.mem.Allocator = std.heap.c_allocator;
+
 pub fn main() !void {
-    var gpa = std.heap.DebugAllocator(.{}).init;
-    const allocator: std.mem.Allocator = gpa.allocator();
+    // var gpa = std.heap.DebugAllocator(.{}).init;
+    // const allocator: std.mem.Allocator = gpa.allocator();
     // const allocator: std.mem.Allocator = std.heap.c_allocator;
 
     var ctx: *Context = try Context.create(allocator);
@@ -41,7 +45,7 @@ pub fn main() !void {
 
     ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
 
-    while (!rl.windowShouldClose() and !(ctx.state == .Exiting)) {
+    while (!rl.windowShouldClose() and !(ctx.state.current == .Exiting)) {
         try ctx.update();
 
         rl.gl.rlDisableBackfaceCulling();
@@ -49,19 +53,19 @@ pub fn main() !void {
         rl.beginDrawing();
         rl.clearBackground(rl.Color.gray);
 
-        if (ctx.state != ctx.prevState) {
-            gui.DrawBuffer.clear(ctx.allocator);
-            ctx.prevState = ctx.state;
+        if (ctx.state.current != ctx.state.previous) {
+            gui.DrawBuffer.clear();
+            ctx.state.previous = ctx.state.current;
         }
 
-        switch (ctx.state) {
-            .Menu => try gui.Window.main.render(ctx),
+        switch (ctx.state.current) {
+            .Menu => try gui.Window.main.render(),
             .Playing => try renderGame(ctx),
             .Settings => try gui.Window.settings.render(ctx),
             else => {},
         }
 
-        if (ctx.debug) {
+        if (ctx.settings.debug) {
             drawDebug();
         }
 

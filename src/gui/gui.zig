@@ -1,6 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const Context = @import("../Context.zig");
+const root = @import("root");
 
 pub const Callback = @import("callback.zig");
 
@@ -47,16 +48,16 @@ pub const Component = union(enum) {
         }
     }
 
-    pub fn destroy(self: Component, allocator: std.mem.Allocator) void {
+    pub fn destroy(self: Component) void {
         switch (self) {
-            .button => |b| b.destroy(allocator),
-            .slider => |s| s.destroy(allocator),
-            .checkBox => |c| c.destroy(allocator),
-            .label => |l| l.destroy(allocator),
-            .image => |i| i.destroy(allocator),
-            .gradiant => |g| g.destroy(allocator),
-            .crosshair => |c| c.destroy(allocator),
-            .hotbar => |h| h.destroy(allocator),
+            .button => |b| b.destroy(),
+            .slider => |s| s.destroy(),
+            .checkBox => |c| c.destroy(),
+            .label => |l| l.destroy(),
+            .image => |i| i.destroy(),
+            .gradiant => |g| g.destroy(),
+            .crosshair => |c| c.destroy(),
+            .hotbar => |h| h.destroy(),
             else => {},
         }
     }
@@ -129,7 +130,7 @@ pub const DrawBuffer = struct {
 
     pub fn init(ctx: *Context) !void {
         try Textures.init();
-        list = std.ArrayList(Component).init(ctx.allocator);
+        list = std.ArrayList(Component).init(root.allocator);
         Callback.init(ctx);
     }
 
@@ -153,9 +154,9 @@ pub const DrawBuffer = struct {
         }
     }
 
-    pub fn clear(allocator: std.mem.Allocator) void {
+    pub fn clear() void {
         for (list.items) |item| {
-            item.destroy(allocator);
+            item.destroy();
         }
 
         list.clearRetainingCapacity();

@@ -1,7 +1,5 @@
 const map = @import("../map/world.zig").Map;
 const Context = @import("../Context.zig");
-const gui = @import("../gui/gui.zig");
-const rl = @import("raylib");
 
 pub fn render3D(ctx: *Context) !void {
     map.draw(ctx);

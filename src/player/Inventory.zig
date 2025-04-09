@@ -15,3 +15,8 @@ const Slot = struct {
     // content: Content,
     slot: u32,
 };
+
+pub fn contains(b: u8) bool {
+    _ = b;
+    return true;
+}

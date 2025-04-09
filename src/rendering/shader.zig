@@ -5,7 +5,6 @@ const Context = @import("../Context.zig");
 pub var shadowShader: rl.Shader = undefined;
 
 pub fn setShadowColor(color: rl.Color) void {
-    // light color
     const lightColorNormalized = rl.colorNormalize(color);
     const lightColLoc = rl.getShaderLocation(shadowShader, "lightColor");
     rl.setShaderValue(shadowShader, lightColLoc, &lightColorNormalized, .vec4);

@@ -1,5 +1,5 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const blocks = @import("../../map/blocks.zig");
@@ -10,8 +10,8 @@ selection: *u8,
 pos: rl.Rectangle,
 ctx: *Context,
 
-pub fn create(allocator: std.mem.Allocator, selection: *u8, ctx: *Context) !*Self {
-    const slot: *Self = try allocator.create(Self);
+pub fn create(selection: *u8, ctx: *Context) !*Self {
+    const slot: *Self = try root.allocator.create(Self);
 
     slot.* = .{
         .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
@@ -22,8 +22,8 @@ pub fn create(allocator: std.mem.Allocator, selection: *u8, ctx: *Context) !*Sel
     return slot;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

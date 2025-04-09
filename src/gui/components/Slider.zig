@@ -1,5 +1,5 @@
 const Self = @This();
-
+const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const std = @import("std");
@@ -18,8 +18,8 @@ value: *f32,
 thumbWidth: f32,
 state: State = .default,
 
-pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, minValue: f32, maxValue: f32, value: *f32, thumbWidth: f32) !*Self {
-    const slider: *Self = try allocator.create(Self);
+pub fn create(pos: rl.Rectangle, minValue: f32, maxValue: f32, value: *f32, thumbWidth: f32) !*Self {
+    const slider: *Self = try root.allocator.create(Self);
 
     slider.* = .{
         .pos = pos,
@@ -32,8 +32,8 @@ pub fn create(allocator: std.mem.Allocator, pos: rl.Rectangle, minValue: f32, ma
     return slider;
 }
 
-pub fn destroy(self: *const Self, allocator: std.mem.Allocator) void {
-    allocator.destroy(self);
+pub fn destroy(self: *const Self) void {
+    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {
