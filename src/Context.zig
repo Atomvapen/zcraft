@@ -11,6 +11,7 @@ player: *Player = undefined,
 state: State = .{},
 settings: Settings = .{},
 generated: bool = false,
+cursorEnabled: bool = true,
 
 const State = struct {
     const GameState = enum { None, Menu, Playing, Settings, Exiting };
@@ -48,6 +49,13 @@ pub fn update(self: *Self) !void {
         self.deltatime = @floatCast(rl.getFrameTime());
         try self.player.update(self);
         map.Map.update();
+    }
+}
+
+fn setCursorVisibility(current: *bool, desired: bool) void {
+    if (desired != current.*) {
+        current.* = desired;
+        if (desired) rl.enableCursor() else rl.disableCursor();
     }
 }
 

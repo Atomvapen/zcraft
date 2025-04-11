@@ -12,10 +12,6 @@ pub const allocator: std.mem.Allocator = gpa.allocator(); // main game allocator
 // pub const allocator: std.mem.Allocator = std.heap.c_allocator;
 
 pub fn main() !void {
-    // var gpa = std.heap.DebugAllocator(.{}).init;
-    // const allocator: std.mem.Allocator = gpa.allocator();
-    // const allocator: std.mem.Allocator = std.heap.c_allocator;
-
     var ctx: *Context = try Context.create(allocator);
     defer ctx.destroy(allocator);
 
@@ -58,38 +54,28 @@ pub fn main() !void {
         if (ctx.state.current != ctx.state.previous) {
             gui.DrawBuffer.clear();
             ctx.state.previous = ctx.state.current;
+
+            switch (ctx.state.current) {
+                .Menu => rl.enableCursor(),
+                .Playing => rl.disableCursor(),
+                .Settings => rl.enableCursor(),
+                else => {},
+            }
         }
 
         switch (ctx.state.current) {
             .Menu => try gui.Window.main.render(),
-            .Playing => try renderGame(ctx),
+            .Playing => try renderer.renderGame(ctx),
             .Settings => try gui.Window.settings.render(ctx),
             else => {},
         }
 
         if (ctx.settings.debug) {
-            drawDebug();
+            renderer.drawDebug();
         }
 
         gui.DrawBuffer.update();
 
         rl.endDrawing();
     }
-}
-
-fn drawDebug() void {
-    rl.drawFPS(100, 100);
-}
-
-fn renderGame(ctx: *Context) !void {
-    ctx.generated = true;
-    switch (ctx.player.inventory.open) {
-        true => rl.enableCursor(),
-        false => rl.disableCursor(),
-    }
-    try shader.drawShadow(ctx);
-    rl.beginMode3D(ctx.player.camera);
-    try renderer.render3D(ctx);
-    rl.endMode3D();
-    try renderer.render2D(ctx);
 }
