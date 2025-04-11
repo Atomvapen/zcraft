@@ -1,17 +1,20 @@
 const map = @import("../map/world.zig").Map;
 const Context = @import("../Context.zig");
-const Player = @import("../player/player.zig");
+const Player = @import("../player/player.zig").Player;
+const Collision = @import("../player/player.zig").Collision;
 const rl = @import("raylib");
 const shader = @import("shader.zig");
+const vec = @import("../math/vec.zig");
+const gui = @import("../gui/gui.zig");
 
 pub fn render3D(ctx: *Context) !void {
     map.draw(ctx);
-    try Player.Render.shadow(ctx.player);
-    try Player.Render.model(ctx.player);
+    try Render.shadow(ctx.player);
+    try Render.model(ctx.player);
 }
 
 pub fn render2D(ctx: *Context) !void {
-    try Player.Render.ui(ctx.player, ctx);
+    try Render.ui(ctx.player, ctx);
 }
 
 pub fn renderGame(ctx: *Context) !void {
@@ -29,3 +32,30 @@ pub fn renderGame(ctx: *Context) !void {
 pub fn drawDebug() void {
     rl.drawFPS(100, 100);
 }
+
+pub const Render = struct {
+    pub fn shadow(self: *Player) !void {
+        if (@abs((shader.lightCam.position.x + shader.lightCam.position.z) - (self.camera.position.x + self.camera.position.z)) > 50) {
+            shader.lightCam.position.x = self.camera.position.x;
+            shader.lightCam.position.z = self.camera.position.z;
+            shader.lightCam.target.x = self.camera.position.x;
+            shader.lightCam.target.z = self.camera.position.z + 0.001;
+        }
+    }
+
+    pub fn model(self: *Player) !void {
+        if (Collision.sendRayCameraTarget(self)) |hit| {
+            const pos: rl.Vector3 = vec.rlTransform(@round(hit.position), rl.Vector3);
+            rl.drawCube(pos, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
+        }
+    }
+
+    pub fn ui(self: *Player, ctx: *Context) !void {
+        const Component = gui.Component;
+        if (gui.DrawBuffer.list.items.len == 0) { // Refactor out of player?
+            gui.DrawBuffer.append(Component{ .hotbar = try .create(&self.inventory.hotbar.selection, ctx) });
+            gui.DrawBuffer.append(Component{ .crosshair = try .create(10) });
+            gui.DrawBuffer.append(Component{ .inventory = try .create(ctx) });
+        }
+    }
+};

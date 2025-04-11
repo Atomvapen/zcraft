@@ -1,40 +1,10 @@
 const rl = @import("raylib");
-// const std = @import("std");
 const map = @import("../map/world.zig");
 const Context = @import("../Context.zig");
-const shader = @import("../rendering/shader.zig");
-const gui = @import("../gui/gui.zig");
 const Inventory = @import("../player/Inventory.zig");
 const vec = @import("../math/vec.zig");
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-
-pub const Render = struct {
-    pub fn shadow(self: *Player) !void {
-        if (@abs((shader.lightCam.position.x + shader.lightCam.position.z) - (self.camera.position.x + self.camera.position.z)) > 50) {
-            shader.lightCam.position.x = self.camera.position.x;
-            shader.lightCam.position.z = self.camera.position.z;
-            shader.lightCam.target.x = self.camera.position.x;
-            shader.lightCam.target.z = self.camera.position.z + 0.001;
-        }
-    }
-
-    pub fn model(self: *Player) !void {
-        if (Collision.sendRayCameraTarget(self)) |hit| {
-            const pos: rl.Vector3 = vec.rlTransform(@round(hit.position), rl.Vector3);
-            rl.drawCube(pos, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
-        }
-    }
-
-    pub fn ui(self: *Player, ctx: *Context) !void {
-        const Component = gui.Component;
-        if (gui.DrawBuffer.list.items.len == 0) { // Refactor out of player?
-            gui.DrawBuffer.append(Component{ .hotbar = try .create(&self.inventory.hotbar.selection, ctx) });
-            gui.DrawBuffer.append(Component{ .crosshair = try .create(10) });
-            gui.DrawBuffer.append(Component{ .inventory = try .create(ctx) });
-        }
-    }
-};
 
 pub const Player = struct {
     const Self = @This();
@@ -75,6 +45,8 @@ pub const Player = struct {
             var block = &self.inventory.items[0][self.inventory.hotbar.selection];
             if (block.amount == 0 or block.id == 0) return;
             const pos: Vec3i = @intFromFloat(@round(hit.position + hit.normal));
+            const b: u8 = map.Map.getBlock(pos);
+            if (b != 0) return;
             try map.Map.setBlockUpdate(pos, block.id);
             block.amount -= 1;
             if (block.amount == 0) block.id = 0;
@@ -287,8 +259,8 @@ pub const Player = struct {
     }
 };
 
-const Collision = struct {
-    fn sendRayCameraTarget(player: *Player) ?struct { position: Vec3f, normal: Vec3f } {
+pub const Collision = struct {
+    pub fn sendRayCameraTarget(player: *Player) ?struct { position: Vec3f, normal: Vec3f } {
         const step_amount: f32 = 0.05;
         const max_distance: f32 = 5.0;
         var distance: f32 = 0.0;
@@ -314,7 +286,7 @@ const Collision = struct {
         return null;
     }
 
-    fn sendRayPlayerDirection(player: *Player, Direction: enum { up, down, left, right, forward, backward }, distance: usize) ?Vec3f {
+    pub fn sendRayPlayerDirection(player: *Player, Direction: enum { up, down, left, right, forward, backward }, distance: usize) ?Vec3f {
         const stepAmount: f32 = 0.1;
 
         for (0..distance) |i| {
