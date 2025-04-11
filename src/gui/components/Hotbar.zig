@@ -27,7 +27,9 @@ pub fn destroy(self: *const Self) void {
 }
 
 pub fn render(self: *Self) void {
-    if (!self.ctx.player.hotbar.visible) return;
+    const inventory = self.ctx.player.inventory;
+
+    if (!inventory.hotbar.visible) return;
     const scalar: f32 = 0.25;
 
     const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
@@ -44,7 +46,7 @@ pub fn render(self: *Self) void {
     const barCenterX = screenWidth / 2.0;
     const slotSpacing = slotWidth * scalar;
     const posY = screenHeight - (slotHeight * scalar); // - 10.0;
-    const hotbarItemsLen: i32 = self.ctx.player.hotbar.items.len;
+    const hotbarItemsLen: i32 = inventory.items[0].len;
 
     for (0..hotbarItemsLen) |i| {
         const isSelected = (i == @as(usize, self.selection.*));
@@ -73,8 +75,8 @@ pub fn render(self: *Self) void {
 
         { // Icon
 
-            const blockIndex = self.ctx.player.hotbar.items[i];
-            const block = blocks.Block.fromInt(blockIndex);
+            const blockIndex = inventory.items[0][i];
+            const block = blocks.Block.fromInt(blockIndex.id);
             if (@intFromEnum(block.id) == 0) continue;
             const texture = block.getIcon() catch continue;
 
@@ -101,6 +103,22 @@ pub fn render(self: *Self) void {
                 0,
                 rl.Color.white,
             );
+
+            const amount = blockIndex.amount;
+            if (amount > 1) {
+                var amountBuf: [8]u8 = undefined;
+                const amountText: [:0]u8 = std.fmt.bufPrintZ(amountBuf[0..], "{}", .{amount}) catch continue;
+                const fontSize: i32 = 24;
+                const textWidth: i32 = rl.measureText(amountText, fontSize);
+
+                rl.drawText(
+                    amountText,
+                    @intFromFloat(destRect.x + destRect.width - @as(f32, @floatFromInt(textWidth)) - 2),
+                    @intFromFloat(destRect.y + destRect.height - @as(f32, fontSize) - 2),
+                    fontSize,
+                    rl.Color.white,
+                );
+            }
         }
     }
 }

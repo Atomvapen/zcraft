@@ -13,39 +13,23 @@ pub const Vec4f = @Vector(4, f32);
 /// Supported conversions are between `Vec3i, Vec3f` and `rl.Vector3` .
 pub fn rlTransform(self: anytype, comptime Target: type) Target {
     const rl = @import("raylib");
-
-    if (@TypeOf(self) == Target) return self;
-
     const self_info = @typeInfo(@TypeOf(self));
     const target_info = @typeInfo(Target);
 
-    // Ensure valid source and target types
-    if (!(self_info == .vector or @TypeOf(self) == rl.Vector3)) {
-        @compileError("rlTransform() only supports conversions from rl.Vector3 or @Vector(3, T).");
+    if (!(self_info == .vector or @TypeOf(self) == rl.Vector3) and !(target_info == .vector or Target == rl.Vector3)) {
+        @compileError("rlTransform() only supports conversions between rl.Vector3 and @Vector(3, T).");
     }
-    if (!(target_info == .vector or Target == rl.Vector3)) {
-        @compileError("rlTransform() only supports conversions to rl.Vector3 or @Vector(3, T).");
-    }
-
-    // Ensure both are 3D vectors
     if ((self_info == .vector and self_info.vector.len != 3) or (target_info == .vector and target_info.vector.len != 3)) {
         @compileError("rlTransform() only supports 3D vectors.");
     }
+    if (@TypeOf(self) == Target) @compileError("Transformation from and to the same type."); //return self;
 
     var result: Target = undefined;
 
     switch (@TypeOf(self)) {
         rl.Vector3 => switch (Target) {
-            Vec3i => result = @Vector(3, i32){
-                @as(i32, @intFromFloat(self.x)),
-                @as(i32, @intFromFloat(self.y)),
-                @as(i32, @intFromFloat(self.z)),
-            },
-            Vec3f => result = @Vector(3, f32){
-                self.x,
-                self.y,
-                self.z,
-            },
+            Vec3i => result = @Vector(3, i32){ @as(i32, @intFromFloat(self.x)), @as(i32, @intFromFloat(self.y)), @as(i32, @intFromFloat(self.z)) },
+            Vec3f => result = @Vector(3, f32){ self.x, self.y, self.z },
             else => @compileError("Unsupported conversion."),
         },
         Vec3f => result = rl.Vector3{ .x = self[0], .y = self[1], .z = self[2] },
@@ -67,14 +51,46 @@ pub fn transform(self: anytype, comptime Target: type) Target {
 
     if (self_info != .vector) @compileError("Transformation can only be used on vectors.");
     if (target_info != .vector) @compileError("Transformation can only be done to vectors.");
-    if (self_info.vector.len != target_info.vector.len) @compileError("Vectors must have the same length.");
+    // if (self_info.vector.len != target_info.vector.len) @compileError("Vectors must have the same length.");
     if (@TypeOf(self) == Target) @compileError("Transformation from and to the same type."); //return self;
 
-    const ChildType: type = self_info.vector.child;
-    const vector_length: i32 = self_info.vector.len;
     var result: Target = undefined;
-    inline for (0..vector_length) |i| {
-        result[i] = switch (ChildType) {
+
+    // const SrcElem = self_info.vector.child;
+    // const DstElem = target_info.vector.child;
+
+    // const kind = blk: {
+    //     if (SrcElem == DstElem) break :blk .Same;
+    //     if (@typeInfo(SrcElem) == .int and @typeInfo(DstElem) == .float) break :blk .IntToFloat;
+    //     if (@typeInfo(SrcElem) == .float and @typeInfo(DstElem) == .int) break :blk .FloatToInt;
+    //     if (@typeInfo(SrcElem) == .float and @typeInfo(DstElem) == .float) break :blk .FloatToFloat;
+    //     if (@typeInfo(SrcElem) == .int and @typeInfo(DstElem) == .int) break :blk .IntToInt;
+    //     if (@typeInfo(SrcElem) == .Usize and @typeInfo(DstElem) == .Float) break :blk .UsizeToFloat;
+    //     if (@typeInfo(SrcElem) == .Usize and @typeInfo(DstElem) == .Int) break :blk .UsizeToInt;
+    //     if (@typeInfo(SrcElem) == .Int and @typeInfo(DstElem) == .Usize) break :blk .IntToUsize;
+    //     if (@typeInfo(SrcElem) == .Float and @typeInfo(DstElem) == .Usize) break :blk .FloatToUsize;
+    //     if (@typeInfo(SrcElem) == .Usize and @typeInfo(DstElem) == .Usize) break :blk .UsizeToUsize;
+    //     break :blk .Unsupported;
+    // };
+
+    // inline for (0..@min(self_info.vector.len, target_info.vector.len)) |i| {
+    //     result[i] = switch (kind) {
+    //         .Same => self[i],
+    //         .IntToFloat => @floatFromInt(self[i]),
+    //         .IntToInt => @intCast(self[i]),
+    //         .IntToUsize => @intCast(self[i]),
+    //         .FloatToInt => @intFromFloat(self[i]),
+    //         .FloatToFloat => @floatCast(self[i]),
+    //         .FloatToUsize => @intFromFloat(self[i]),
+    //         .UsizeToFloat => @floatFromInt(self[i]),
+    //         .UsizeToInt => @intCast(self[i]),
+    //         .UsizeToUsize => @intCast(self[i]),
+    //         else => @compileError("Unsupported vector element type."),
+    //     };
+    // }
+
+    inline for (0..@min(self_info.vector.len, target_info.vector.len)) |i| {
+        result[i] = switch (self_info.vector.child) {
             i32 => @floatFromInt(self[i]),
             f32 => @intFromFloat(self[i]),
             else => @compileError("Unsupported vector element type."),

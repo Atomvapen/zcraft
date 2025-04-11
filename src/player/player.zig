@@ -5,15 +5,41 @@ const Context = @import("../Context.zig");
 const shader = @import("../rendering/shader.zig");
 const gui = @import("../gui/gui.zig");
 const Inventory = @import("../player/Inventory.zig");
-const Hotbar = @import("../player/Hotbar.zig");
 const vec = @import("../math/vec.zig");
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
+pub const Render = struct {
+    pub fn shadow(self: *Player) !void {
+        if (@abs((shader.lightCam.position.x + shader.lightCam.position.z) - (self.camera.position.x + self.camera.position.z)) > 50) {
+            shader.lightCam.position.x = self.camera.position.x;
+            shader.lightCam.position.z = self.camera.position.z;
+            shader.lightCam.target.x = self.camera.position.x;
+            shader.lightCam.target.z = self.camera.position.z + 0.001;
+        }
+    }
+
+    pub fn model(self: *Player) !void {
+        if (Collision.sendRayCameraTarget(self)) |hit| {
+            const pos: rl.Vector3 = vec.rlTransform(@round(hit.position), rl.Vector3);
+            rl.drawCube(pos, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
+        }
+    }
+
+    pub fn ui(self: *Player, ctx: *Context) !void {
+        const Component = gui.Component;
+        if (gui.DrawBuffer.list.items.len == 0) { // Refactor out of player?
+            gui.DrawBuffer.append(Component{ .hotbar = try .create(&self.inventory.hotbar.selection, ctx) });
+            gui.DrawBuffer.append(Component{ .crosshair = try .create(10) });
+            gui.DrawBuffer.append(Component{ .inventory = try .create(ctx) });
+        }
+    }
+};
+
 pub const Player = struct {
     const Self = @This();
     const Stats = struct { stamina: f32 = 100, speed: f32 = 0, health: i32 = 100 };
-    const MovementState = enum { default, crouching, sprinting, swimming, flying };
+    // const MovementState = enum { default, crouching, sprinting, swimming, flying };
 
     camera: rl.Camera3D = rl.Camera3D{
         .position = .{ .x = 1.0, .y = 40.0, .z = 1.0 },
@@ -29,7 +55,6 @@ pub const Player = struct {
     // movementState: MovementState = .default,
     spritning: bool = false,
     crouching: bool = false,
-    hotbar: Hotbar = .{},
     inventory: Inventory = .{},
 
     pub fn create(ctx: *Context) !*Self {
@@ -48,7 +73,7 @@ pub const Player = struct {
 
     fn handleKeybindings(self: *Self, ctx: *Context) !void {
         for (49..57 + 1) |key| {
-            if (rl.isKeyPressed(@enumFromInt(key))) self.hotbar.selection = @intCast(key - 49);
+            if (rl.isKeyPressed(@enumFromInt(key))) self.inventory.hotbar.selection = @intCast(key - 49);
         }
 
         // Scroll wheel
@@ -58,8 +83,8 @@ pub const Player = struct {
             if (ctx.settings.reverseScrolling) direction = -1;
             const block_count: u8 = 9;
             const wheel_move_int: i32 = @intFromFloat(wheel_move * direction);
-            self.hotbar.selection = @intCast(@mod((self.hotbar.selection + block_count + wheel_move_int), block_count));
-            if (self.hotbar.selection == -1) self.hotbar.selection = block_count;
+            self.inventory.hotbar.selection = @intCast(@mod((self.inventory.hotbar.selection + block_count + wheel_move_int), block_count));
+            if (self.inventory.hotbar.selection == -1) self.inventory.hotbar.selection = block_count;
         }
 
         if (rl.isMouseButtonPressed(.right)) {
@@ -73,6 +98,8 @@ pub const Player = struct {
         if (rl.isMouseButtonPressed(.middle)) {
             self.getBlock();
         }
+
+        if (rl.isKeyPressed(.tab)) self.inventory.open = !self.inventory.open;
     }
 
     fn updateMap(self: *Player, ctx: *Context) !void {
@@ -101,18 +128,6 @@ pub const Player = struct {
         self.updatePos(@floatCast(ctx.deltatime));
     }
 
-    fn sprint(self: *Self) !void {
-        if (rl.isKeyDown(.left_shift) and !(self.stats.stamina <= 10)) {
-            self.stats.speed *= 1.5;
-            self.stats.stamina -= 0.02;
-            self.camera.fovy = 100;
-        } else {
-            self.stats.stamina += 0.01;
-            self.camera.fovy = 90;
-        }
-        self.stats.stamina = rl.math.clamp(self.stats.stamina, 0, 100);
-    }
-
     fn movePlayer(self: *Self, deltaTime: f32) void {
         self.stats.speed = 15.0 * deltaTime * 0.5;
 
@@ -120,7 +135,17 @@ pub const Player = struct {
         const right = rl.Vector3.normalize(rl.Vector3.crossProduct(rl.Vector3{ .x = 0.0, .y = 1.0, .z = 0.0 }, forward));
         var new_pos = self.pos;
 
-        if (forward.x != 0 and forward.z != 0) self.sprint() catch {};
+        if (forward.x != 0 and forward.z != 0) { //Sprint
+            if (rl.isKeyDown(.left_shift) and !(self.stats.stamina <= 10)) {
+                self.stats.speed *= 1.5;
+                self.stats.stamina -= 0.02;
+                self.camera.fovy = 100;
+            } else {
+                self.stats.stamina += 0.01;
+                self.camera.fovy = 90;
+            }
+            self.stats.stamina = rl.math.clamp(self.stats.stamina, 0, 100);
+        }
 
         if (rl.isKeyDown(.w)) {
             new_pos.x += forward.x * self.stats.speed;
@@ -165,36 +190,17 @@ pub const Player = struct {
 
         self.camera.position = self.pos;
 
-        rl.updateCamera(&self.camera, rl.CameraMode.first_person);
-    }
-
-    pub fn render2D(self: *Self, ctx: *Context) !void {
-        const Component = gui.Component;
-        if (gui.DrawBuffer.list.items.len == 0) { // Refactor out of player?
-            gui.DrawBuffer.append(Component{ .hotbar = try .create(&self.hotbar.selection, ctx) });
-            gui.DrawBuffer.append(Component{ .crosshair = try .create(10) });
-        }
-    }
-
-    pub fn render3D(self: *Self) !void {
-        // Shadow follow player
-        if (@abs((shader.lightCam.position.x + shader.lightCam.position.z) - (self.camera.position.x + self.camera.position.z)) > 50) {
-            shader.lightCam.position.x = self.camera.position.x;
-            shader.lightCam.position.z = self.camera.position.z;
-            shader.lightCam.target.x = self.camera.position.x;
-            shader.lightCam.target.z = self.camera.position.z + 0.001;
-        }
-
-        if (Collision.sendRayCameraTarget(self)) |hit| {
-            const pos: rl.Vector3 = vec.rlTransform(@round(hit.position), rl.Vector3);
-            rl.drawCube(pos, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
-        }
+        if (!self.inventory.open) rl.updateCamera(&self.camera, rl.CameraMode.first_person);
     }
 
     pub fn placeBlock(self: *Self) !void {
         if (Collision.sendRayCameraTarget(self)) |hit| { // TODO: Self Collision
             const pos: Vec3i = vec.transform(@round(hit.position + hit.normal), Vec3i);
-            try map.Map.setBlockUpdate(pos, self.hotbar.items[self.hotbar.selection]);
+            var block = &self.inventory.items[0][self.inventory.hotbar.selection];
+            if (block.amount == 0 or block.id == 0) return;
+            try map.Map.setBlockUpdate(pos, block.id);
+            block.amount -= 1;
+            if (block.amount == 0) block.id = 0;
         }
     }
 
@@ -209,9 +215,8 @@ pub const Player = struct {
         if (Collision.sendRayCameraTarget(self)) |hit| {
             const pos: Vec3i = vec.transform(@round(hit.position), Vec3i);
             if (map.Map.getChunk(map.toChunkPos(pos))) |c| {
-                const block: u8 = c.getBlock(pos);
-                // if (!self.inventory.contains(block)) return;
-                self.hotbar.items[self.hotbar.selection] = block;
+                const block = self.inventory.contains(c.getBlock(pos));
+                if (block) |b| self.inventory.swap(b, .{ .row = 0, .col = self.inventory.hotbar.selection });
             }
         }
     }
@@ -291,14 +296,16 @@ const Collision = struct {
         const ray_dir: Vec3f = vec.normalize(target_pos - camera_pos);
 
         while (distance < max_distance) : (distance += step_amount) {
-            const current_pos = @round(camera_pos + vec.scale(ray_dir, distance));
-            if (!vec.compare(current_pos, previous_pos)) {
-                if (map.Map.getBlock(vec.transform(current_pos, Vec3i)) != 0) {
-                    const normal: Vec3f = previous_pos - current_pos;
-                    return .{ .position = current_pos, .normal = normal };
-                }
-                previous_pos = current_pos;
+            const offset = vec.scale(ray_dir, distance);
+            const current_pos = @round(camera_pos + offset);
+            if (vec.compare(current_pos, previous_pos)) continue;
+
+            const block_pos: Vec3i = vec.transform(current_pos, Vec3i);
+            if (map.Map.getBlock(block_pos) != 0) {
+                const normal: Vec3f = previous_pos - current_pos;
+                return .{ .position = current_pos, .normal = normal };
             }
+            previous_pos = current_pos;
         }
         return null;
     }
@@ -317,10 +324,8 @@ const Collision = struct {
                 .forward => pos[2] -= step,
                 .backward => pos[2] += step,
             }
-            pos = @round(pos);
-            if (map.Map.getBlock(vec.transform(pos, Vec3i)) != 0) return pos;
+            if (map.Map.getBlock(vec.transform(@round(pos), Vec3i)) != 0) return pos;
         }
-
         return null;
     }
 };

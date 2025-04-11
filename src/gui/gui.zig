@@ -14,6 +14,7 @@ pub const Component = union(enum) {
     const GradiantRectangle = @import("components/RectangleGradiant.zig");
     const Crosshair = @import("components/Crosshair.zig");
     const Hotbar = @import("components/Hotbar.zig");
+    const Inventory = @import("components/Inventory.zig");
 
     button: *Button,
     slider: *Slider,
@@ -23,6 +24,7 @@ pub const Component = union(enum) {
     gradiant: *GradiantRectangle,
     crosshair: *Crosshair,
     hotbar: *Hotbar,
+    inventory: *Inventory,
     _,
 
     pub fn render(self: Component) void {
@@ -35,6 +37,7 @@ pub const Component = union(enum) {
             .gradiant => |g| g.render(),
             .crosshair => |c| c.render(),
             .hotbar => |h| h.render(),
+            .inventory => |inv| inv.render(),
             else => {},
         }
     }
@@ -58,6 +61,7 @@ pub const Component = union(enum) {
             .gradiant => |g| g.destroy(),
             .crosshair => |c| c.destroy(),
             .hotbar => |h| h.destroy(),
+            .inventory => |inv| inv.destroy(),
             else => {},
         }
     }
@@ -86,6 +90,8 @@ pub const Textures = struct {
     pub var slot: rl.Texture = undefined;
     pub var slotActive: rl.Texture = undefined;
 
+    pub var inventory: rl.Texture = undefined;
+
     pub fn init() !void {
         Textures.dirtFlat = try rl.loadTexture("assets/blocks/dirt_flat.png");
         Textures.grassFlat = try rl.loadTexture("assets/blocks/grass_flat.png");
@@ -103,6 +109,7 @@ pub const Textures = struct {
 
         Textures.slot = try rl.loadTexture("assets/gui/hotbar.png");
         Textures.slotActive = try rl.loadTexture("assets/gui/hotbar_active.png");
+        Textures.inventory = try rl.loadTexture("assets/gui/inventory.png");
     }
 
     pub fn deinit() void {
@@ -122,6 +129,8 @@ pub const Textures = struct {
 
         rl.unloadTexture(Textures.slot);
         rl.unloadTexture(Textures.slotActive);
+
+        rl.unloadTexture(Textures.inventory);
     }
 };
 

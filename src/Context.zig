@@ -58,6 +58,7 @@ fn keybinds(self: *Self) void {
         .f3 => self.settings.debug = !self.settings.debug,
         .f11 => rl.toggleFullscreen(),
         .escape => self.state.current = .Settings,
+        .l => std.debug.print("{any}\n", .{self.player.inventory.items[0]}),
         else => {},
     }
 

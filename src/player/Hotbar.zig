@@ -1,5 +1,7 @@
 const Self = @This();
 const rl = @import("raylib");
+const inventeory = @import("Inventory.zig");
+
 const slots: i32 = 9;
 
 items: [slots]u8 = undefined,
@@ -32,15 +34,3 @@ pub fn setRow(self: *Self, items: [slots]u8) void {
     }
     self.items = items;
 }
-
-// pub fn toggleVisibility(self: *Self) void {
-//     self.visible = !self.visible;
-// }
-
-// pub fn setVisibility(self: *Self, value: bool) void {
-//     self.visible = value;
-// }
-
-// pub fn getVisibility(self: *Self) bool {
-//     return self.visible;
-// }

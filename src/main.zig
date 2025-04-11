@@ -43,7 +43,9 @@ pub fn main() !void {
 
     try map.Generate.Structures.init();
 
-    ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
+    // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
+    // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
+    ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);
 
     while (!rl.windowShouldClose() and !(ctx.state.current == .Exiting)) {
         try ctx.update();
@@ -81,8 +83,11 @@ fn drawDebug() void {
 
 fn renderGame(ctx: *Context) !void {
     ctx.generated = true;
-    rl.disableCursor();
-    shader.drawShadow(ctx);
+    switch (ctx.player.inventory.open) {
+        true => rl.enableCursor(),
+        false => rl.disableCursor(),
+    }
+    try shader.drawShadow(ctx);
     rl.beginMode3D(ctx.player.camera);
     try renderer.render3D(ctx);
     rl.endMode3D();
