@@ -58,7 +58,7 @@ const Frustum = struct {
 pub fn isChunkVisible(pos: Vec3i) bool {
     const offset: Vec3f = @splat(0.5);
     const chunk: Vec3f = @splat(chunkSize);
-    const min: Vec3f = vec.sub(vec.transform(pos, Vec3f), offset);
+    const min: Vec3f = vec.sub(@as(Vec3f, @floatFromInt(pos)), offset);
     const max: Vec3f = vec.add(min, chunk + offset);
     const projection: rl.Matrix = rl.gl.rlGetMatrixProjection();
     const modelview: rl.Matrix = rl.gl.rlGetMatrixModelview();

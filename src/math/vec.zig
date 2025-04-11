@@ -40,65 +40,6 @@ pub fn rlTransform(self: anytype, comptime Target: type) Target {
     return result;
 }
 
-/// Produces a new vector from of type `target`.
-///
-/// Non-same vector length result in compile errors. Non-valid type conversion result in compile errors.
-///
-/// Supported conversions are between `i32` and `f32`.
-pub fn transform(self: anytype, comptime Target: type) Target {
-    const self_info = @typeInfo(@TypeOf(self));
-    const target_info = @typeInfo(Target);
-
-    if (self_info != .vector) @compileError("Transformation can only be used on vectors.");
-    if (target_info != .vector) @compileError("Transformation can only be done to vectors.");
-    // if (self_info.vector.len != target_info.vector.len) @compileError("Vectors must have the same length.");
-    if (@TypeOf(self) == Target) @compileError("Transformation from and to the same type."); //return self;
-
-    var result: Target = undefined;
-
-    // const SrcElem = self_info.vector.child;
-    // const DstElem = target_info.vector.child;
-
-    // const kind = blk: {
-    //     if (SrcElem == DstElem) break :blk .Same;
-    //     if (@typeInfo(SrcElem) == .int and @typeInfo(DstElem) == .float) break :blk .IntToFloat;
-    //     if (@typeInfo(SrcElem) == .float and @typeInfo(DstElem) == .int) break :blk .FloatToInt;
-    //     if (@typeInfo(SrcElem) == .float and @typeInfo(DstElem) == .float) break :blk .FloatToFloat;
-    //     if (@typeInfo(SrcElem) == .int and @typeInfo(DstElem) == .int) break :blk .IntToInt;
-    //     if (@typeInfo(SrcElem) == .Usize and @typeInfo(DstElem) == .Float) break :blk .UsizeToFloat;
-    //     if (@typeInfo(SrcElem) == .Usize and @typeInfo(DstElem) == .Int) break :blk .UsizeToInt;
-    //     if (@typeInfo(SrcElem) == .Int and @typeInfo(DstElem) == .Usize) break :blk .IntToUsize;
-    //     if (@typeInfo(SrcElem) == .Float and @typeInfo(DstElem) == .Usize) break :blk .FloatToUsize;
-    //     if (@typeInfo(SrcElem) == .Usize and @typeInfo(DstElem) == .Usize) break :blk .UsizeToUsize;
-    //     break :blk .Unsupported;
-    // };
-
-    // inline for (0..@min(self_info.vector.len, target_info.vector.len)) |i| {
-    //     result[i] = switch (kind) {
-    //         .Same => self[i],
-    //         .IntToFloat => @floatFromInt(self[i]),
-    //         .IntToInt => @intCast(self[i]),
-    //         .IntToUsize => @intCast(self[i]),
-    //         .FloatToInt => @intFromFloat(self[i]),
-    //         .FloatToFloat => @floatCast(self[i]),
-    //         .FloatToUsize => @intFromFloat(self[i]),
-    //         .UsizeToFloat => @floatFromInt(self[i]),
-    //         .UsizeToInt => @intCast(self[i]),
-    //         .UsizeToUsize => @intCast(self[i]),
-    //         else => @compileError("Unsupported vector element type."),
-    //     };
-    // }
-
-    inline for (0..@min(self_info.vector.len, target_info.vector.len)) |i| {
-        result[i] = switch (self_info.vector.child) {
-            i32 => @floatFromInt(self[i]),
-            f32 => @intFromFloat(self[i]),
-            else => @compileError("Unsupported vector element type."),
-        };
-    }
-    return result;
-}
-
 /// Produces a new vector from the first `n` elements of the imput vector.
 ///
 /// Out-of-bounds element indexes of `n` result in compile errors.
@@ -130,7 +71,6 @@ pub fn xyzw(self: anytype) @Vector(4, @typeInfo(@TypeOf(self)).vector.child) {
     const info = @typeInfo(@TypeOf(self));
     if (info != .vector) @compileError("xyzw() can only be used on vectors.");
     if (info.vector.len < 4) @compileError("Vector must have at least 4 elements.");
-
     return @shuffle(info.vector.child, self, undefined, [_]i32{ 0, 1, 2, 3 });
 }
 

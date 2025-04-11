@@ -161,7 +161,7 @@ pub const Neighbor = enum(u3) {
     }
 
     pub inline fn getVerts(self: Neighbor, bci: Vec3i) [12]f32 {
-        const bc: Vec3f = vec.transform(bci, Vec3f);
+        const bc: Vec3f = @floatFromInt(bci);
 
         return switch (self) {
             .posY => .{ bc[0], bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },

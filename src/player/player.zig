@@ -46,20 +46,19 @@ pub const Player = struct {
         .target = .{ .x = 0.0, .y = 0.0, .z = 0.0 },
         .up = .{ .x = 0.0, .y = 1.0, .z = 0.0 },
         .fovy = 90.0,
-        .projection = rl.CameraProjection.perspective,
+        .projection = .perspective,
     },
     pos: rl.Vector3 = .{ .x = 1.0, .y = 40.0, .z = 1.0 },
     vel: rl.Vector3 = undefined,
     onGround: bool = false,
     stats: Stats = .{},
     // movementState: MovementState = .default,
-    spritning: bool = false,
-    crouching: bool = false,
-    inventory: Inventory = .{},
+    inventory: Inventory = undefined,
 
     pub fn create(ctx: *Context) !*Self {
         const player: *Self = try ctx.allocator.create(Self);
         player.* = .{};
+        player.*.inventory = .{};
         return player;
     }
 
@@ -70,6 +69,39 @@ pub const Player = struct {
     pub fn kill(self: *Self) void {
         self.stats.health = 0;
     }
+
+    pub fn placeBlock(self: *Self) !void {
+        if (Collision.sendRayCameraTarget(self)) |hit| { // TODO: Self Collision
+            var block = &self.inventory.items[0][self.inventory.hotbar.selection];
+            if (block.amount == 0 or block.id == 0) return;
+            const pos: Vec3i = @intFromFloat(@round(hit.position + hit.normal));
+            try map.Map.setBlockUpdate(pos, block.id);
+            block.amount -= 1;
+            if (block.amount == 0) block.id = 0;
+        }
+    }
+
+    pub fn breakBlock(self: *Self) !void {
+        if (Collision.sendRayCameraTarget(self)) |hit| {
+            const pos: Vec3i = @intFromFloat(@round(hit.position));
+            try map.Map.setBlockUpdate(pos, 0);
+        }
+    }
+
+    pub fn getBlock(self: *Self) void {
+        if (Collision.sendRayCameraTarget(self)) |hit| {
+            const pos: Vec3i = @intFromFloat(@round(hit.position));
+            if (map.Map.getChunk(map.toChunkPos(pos))) |c| {
+                const block: u8 = c.getBlock(pos);
+                if (block == self.inventory.items[0][self.inventory.hotbar.selection].id) return;
+                if (self.inventory.contains(block)) |p| self.inventory.swap(p, .{ .row = 0, .col = self.inventory.hotbar.selection });
+            }
+        }
+    }
+
+    // Refactor and improve below
+    // |
+    // V
 
     fn handleKeybindings(self: *Self, ctx: *Context) !void {
         for (49..57 + 1) |key| {
@@ -193,34 +225,6 @@ pub const Player = struct {
         if (!self.inventory.open) rl.updateCamera(&self.camera, rl.CameraMode.first_person);
     }
 
-    pub fn placeBlock(self: *Self) !void {
-        if (Collision.sendRayCameraTarget(self)) |hit| { // TODO: Self Collision
-            const pos: Vec3i = vec.transform(@round(hit.position + hit.normal), Vec3i);
-            var block = &self.inventory.items[0][self.inventory.hotbar.selection];
-            if (block.amount == 0 or block.id == 0) return;
-            try map.Map.setBlockUpdate(pos, block.id);
-            block.amount -= 1;
-            if (block.amount == 0) block.id = 0;
-        }
-    }
-
-    pub fn breakBlock(self: *Self) !void {
-        if (Collision.sendRayCameraTarget(self)) |hit| {
-            const pos: Vec3i = vec.transform(@round(hit.position), Vec3i);
-            try map.Map.setBlockUpdate(pos, 0);
-        }
-    }
-
-    pub fn getBlock(self: *Self) void {
-        if (Collision.sendRayCameraTarget(self)) |hit| {
-            const pos: Vec3i = vec.transform(@round(hit.position), Vec3i);
-            if (map.Map.getChunk(map.toChunkPos(pos))) |c| {
-                const block = self.inventory.contains(c.getBlock(pos));
-                if (block) |b| self.inventory.swap(b, .{ .row = 0, .col = self.inventory.hotbar.selection });
-            }
-        }
-    }
-
     fn checkCollision(self: *Self, pos: rl.Vector3) void {
         const check_offsets = [_]f32{ -0.9, 0.0, 0.4 }; // Feet, middle, head
 
@@ -300,7 +304,7 @@ const Collision = struct {
             const current_pos = @round(camera_pos + offset);
             if (vec.compare(current_pos, previous_pos)) continue;
 
-            const block_pos: Vec3i = vec.transform(current_pos, Vec3i);
+            const block_pos: Vec3i = @intFromFloat(current_pos);
             if (map.Map.getBlock(block_pos) != 0) {
                 const normal: Vec3f = previous_pos - current_pos;
                 return .{ .position = current_pos, .normal = normal };
@@ -324,7 +328,7 @@ const Collision = struct {
                 .forward => pos[2] -= step,
                 .backward => pos[2] += step,
             }
-            if (map.Map.getBlock(vec.transform(@round(pos), Vec3i)) != 0) return pos;
+            if (map.Map.getBlock(@intFromFloat(@round(pos))) != 0) return pos;
         }
         return null;
     }

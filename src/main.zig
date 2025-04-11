@@ -39,14 +39,16 @@ pub fn main() !void {
 
     try map.Generate.Structures.init();
 
-    // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
-    // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
-    ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);
+    { // Debug block
+        // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
+        // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
+        ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);
+    }
+
+    rl.gl.rlDisableBackfaceCulling();
 
     while (!rl.windowShouldClose() and !(ctx.state.current == .Exiting)) {
         try ctx.update();
-
-        rl.gl.rlDisableBackfaceCulling();
 
         rl.beginDrawing();
         rl.clearBackground(rl.Color.gray);
@@ -56,9 +58,8 @@ pub fn main() !void {
             ctx.state.previous = ctx.state.current;
 
             switch (ctx.state.current) {
-                .Menu => rl.enableCursor(),
+                .Menu, .Settings => rl.enableCursor(),
                 .Playing => rl.disableCursor(),
-                .Settings => rl.enableCursor(),
                 else => {},
             }
         }

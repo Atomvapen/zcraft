@@ -17,7 +17,7 @@ pub fn render2D(ctx: *Context) !void {
 pub fn renderGame(ctx: *Context) !void {
     ctx.generated = true;
 
-    ctx.setCursorVisibility(&ctx.cursorEnabled, ctx.player.inventory.open);
+    ctx.setCursorVisibility();
 
     try shader.drawShadow(ctx);
     rl.beginMode3D(ctx.player.camera);

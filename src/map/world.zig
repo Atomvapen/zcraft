@@ -276,7 +276,7 @@ const ChunkPosition = struct {
         const a: Vec3i = self.toChunkPos();
         const b_chunk: Vec3i = @Vector(3, i32){ @divFloor(b[0], chunkSize), @divFloor(b[1], chunkSize), @divFloor(b[2], chunkSize) };
 
-        const delta: Vec3f = vec.transform(a - b_chunk, Vec3f);
+        const delta: Vec3f = @floatFromInt(a - b_chunk);
         return @sqrt(@reduce(.Add, @as(Vec3f, delta * delta)));
     }
 };

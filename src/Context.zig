@@ -52,10 +52,10 @@ pub fn update(self: *Self) !void {
     }
 }
 
-fn setCursorVisibility(current: *bool, desired: bool) void {
-    if (desired != current.*) {
-        current.* = desired;
-        if (desired) rl.enableCursor() else rl.disableCursor();
+pub fn setCursorVisibility(self: *Self) void {
+    if (self.player.inventory.open != self.cursorEnabled) {
+        self.cursorEnabled = self.player.inventory.open;
+        if (self.player.inventory.open) rl.enableCursor() else rl.disableCursor();
     }
 }
 
