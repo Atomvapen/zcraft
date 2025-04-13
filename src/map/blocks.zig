@@ -3,7 +3,7 @@ const std = @import("std");
 const Context = @import("../Context.zig");
 const zon = @import("../zon.zig");
 
-const Face = enum { top, bottom, side };
+pub const Face = enum { top, bottom, side };
 const faceCount: usize = @typeInfo(Face).@"enum".fields.len;
 const maxBlockType = u8; // 255= 8 bit limit
 const maxBlockCount: usize = std.math.maxInt(maxBlockType);
@@ -117,70 +117,5 @@ pub const Block = struct {
     pub inline fn valid(b: u8) bool {
         const field_count: usize = @typeInfo(ID).@"enum".fields.len;
         return b < field_count;
-    }
-};
-
-pub const Neighbor = enum(u3) {
-    posY,
-    negY,
-    posX,
-    negX,
-    posZ,
-    negZ,
-
-    pub const iterable: [6]Neighbor = [_]Neighbor{ @enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5) };
-
-    pub inline fn toInt(self: Neighbor) u3 {
-        return @intFromEnum(self);
-    }
-
-    pub inline fn fromInt(b: u3) Neighbor {
-        return @enumFromInt(b);
-    }
-
-    pub inline fn relPos(self: Neighbor) Vec3i {
-        return switch (self) {
-            .posY => .{ 0, 1, 0 },
-            .negY => .{ 0, -1, 0 },
-            .posX => .{ 1, 0, 0 },
-            .negX => .{ -1, 0, 0 },
-            .posZ => .{ 0, 0, 1 },
-            .negZ => .{ 0, 0, -1 },
-        };
-    }
-
-    pub inline fn getFace(self: Neighbor) Face {
-        return switch (self) {
-            .posY => .top,
-            .negY => .bottom,
-            .posX => .side,
-            .negX => .side,
-            .posZ => .side,
-            .negZ => .side,
-        };
-    }
-
-    pub inline fn getVerts(self: Neighbor, bci: Vec3i) [12]f32 {
-        const bc: Vec3f = @floatFromInt(bci);
-
-        return switch (self) {
-            .posY => .{ bc[0], bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },
-            .negY => .{ bc[0], bc[1], bc[2], bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1], bc[2] + 1, bc[0], bc[1], bc[2] + 1 },
-            .posZ => .{ bc[0], bc[1], bc[2] + 1, bc[0] + 1, bc[1], bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0], bc[1] + 1, bc[2] + 1 },
-            .negZ => .{ bc[0], bc[1], bc[2], bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] },
-            .posX => .{ bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1], bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },
-            .negX => .{ bc[0], bc[1], bc[2], bc[0], bc[1], bc[2] + 1, bc[0], bc[1] + 1, bc[2] + 1, bc[0], bc[1] + 1, bc[2] },
-        };
-    }
-
-    pub inline fn reverse(self: Neighbor) Neighbor {
-        return switch (self) {
-            .posY => .negY,
-            .negY => .posY,
-            .posX => .negX,
-            .negX => .posX,
-            .posZ => .negZ,
-            .negZ => .posZ,
-        };
     }
 };

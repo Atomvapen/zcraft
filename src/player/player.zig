@@ -48,7 +48,8 @@ pub const Player = struct {
             if (block.amount == 0 or block.id == 0) return;
             const pos: Vec3i = @intFromFloat(@round(hit.position + hit.normal));
             if (map.Map.getBlock(pos) != 0) return;
-            try map.Map.setBlockUpdate(pos, block.id);
+            try map.Map.setBlock(pos, block.id);
+            try map.Map.updateBlockNeighbors(pos);
             block.amount -= 1;
             if (block.amount == 0) block.id = 0;
         }
@@ -58,7 +59,8 @@ pub const Player = struct {
         if (self.in_gui) return;
         if (Collision.sendRayCameraTarget(self)) |hit| {
             const pos: Vec3i = @intFromFloat(@round(hit.position));
-            try map.Map.setBlockUpdate(pos, 0);
+            try map.Map.setBlock(pos, 0);
+            try map.Map.updateBlockNeighbors(pos);
         }
     }
 

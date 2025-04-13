@@ -9,33 +9,97 @@ const zon = @import("../zon.zig");
 const vec = @import("../math/vec.zig");
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-
 const Block = Blocks.Block;
-const Neighbor = Blocks.Neighbor;
 
 pub fn toChunkPos(position: Vec3i) Vec3i {
-    return .{
-        @divFloor(position[0], chunkSize),
-        @divFloor(position[1], chunkSize),
-        @divFloor(position[2], chunkSize),
-    };
+    return @divFloor(position, @as(Vec3i, @splat(chunkSize)));
 }
 
 pub const chunkSize: u8 = 16;
 
-const Chunk = struct {
-    // const size: u16 = 16;
+pub const Neighbor = enum(u3) {
+    posY,
+    negY,
+    posX,
+    negX,
+    posZ,
+    negZ,
 
+    pub const iterable: [6]Neighbor = [_]Neighbor{ @enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5) };
+
+    pub inline fn toInt(self: Neighbor) u3 {
+        return @intFromEnum(self);
+    }
+
+    pub inline fn fromInt(b: u3) Neighbor {
+        return @enumFromInt(b);
+    }
+
+    pub inline fn relPos(self: Neighbor) Vec3i {
+        return switch (self) {
+            .posY => .{ 0, 1, 0 },
+            .negY => .{ 0, -1, 0 },
+            .posX => .{ 1, 0, 0 },
+            .negX => .{ -1, 0, 0 },
+            .posZ => .{ 0, 0, 1 },
+            .negZ => .{ 0, 0, -1 },
+        };
+    }
+
+    pub inline fn getFace(self: Neighbor) Blocks.Face {
+        return switch (self) {
+            .posY => .top,
+            .negY => .bottom,
+            .posX => .side,
+            .negX => .side,
+            .posZ => .side,
+            .negZ => .side,
+        };
+    }
+
+    pub inline fn getVerts(self: Neighbor, bci: Vec3i) [12]f32 {
+        const bc: Vec3f = @floatFromInt(bci);
+
+        return switch (self) {
+            .posY => .{ bc[0], bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },
+            .negY => .{ bc[0], bc[1], bc[2], bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1], bc[2] + 1, bc[0], bc[1], bc[2] + 1 },
+            .posZ => .{ bc[0], bc[1], bc[2] + 1, bc[0] + 1, bc[1], bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0], bc[1] + 1, bc[2] + 1 },
+            .negZ => .{ bc[0], bc[1], bc[2], bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1] + 1, bc[2], bc[0], bc[1] + 1, bc[2] },
+            .posX => .{ bc[0] + 1, bc[1], bc[2], bc[0] + 1, bc[1], bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] + 1, bc[0] + 1, bc[1] + 1, bc[2] },
+            .negX => .{ bc[0], bc[1], bc[2], bc[0], bc[1], bc[2] + 1, bc[0], bc[1] + 1, bc[2] + 1, bc[0], bc[1] + 1, bc[2] },
+        };
+    }
+
+    pub inline fn reverse(self: Neighbor) Neighbor {
+        return switch (self) {
+            .posY => .negY,
+            .negY => .posY,
+            .posX => .negX,
+            .negX => .posX,
+            .posZ => .negZ,
+            .negZ => .posZ,
+        };
+    }
+};
+
+const Chunk = struct {
     blocks: [chunkSize][chunkSize][chunkSize]u8,
     model: ?rl.Model = null,
     dirty: bool = false,
     generated: bool = false,
     pos: ChunkPosition,
+    hash: u96,
 
-    pub const Empty: Chunk = .{ .blocks = undefined, .pos = undefined };
+    const Empty: Chunk = .{ .blocks = undefined, .pos = undefined, .hash = undefined };
 
-    pub fn create() !*Chunk {
+    pub fn create(pos: Vec3i) !*Chunk {
         const chunk: *Chunk = try root.allocator.create(Chunk);
+
+        chunk.* = Chunk.Empty;
+        chunk.*.pos = ChunkPosition.fromWorldPos(pos);
+        chunk.*.hash = ChunkPosition.hashFromPos(pos);
+        // chunk.*.pos = chunk.pos.fromWorldPos(pos);
+        // chunk.*.hash = chunk.pos.hashFromPos(pos);
         return chunk;
     }
 
@@ -198,40 +262,22 @@ const Chunk = struct {
 };
 
 const ChunkPosition = struct {
-    wx: i32,
-    wy: i32,
-    wz: i32,
+    wpos: Vec3i,
 
     pub fn toChunkPos(self: *ChunkPosition) Vec3i {
-        return .{
-            @divFloor(self.wx, chunkSize),
-            @divFloor(self.wy, chunkSize),
-            @divFloor(self.wz, chunkSize),
-        };
+        return @divFloor(self.wpos, @as(Vec3i, @splat(chunkSize)));
     }
 
     pub fn fromChunkPos(v: *Vec3i) ChunkPosition {
-        return .{
-            .wx = v[0],
-            .wy = v[1],
-            .wz = v[2],
-        };
+        return .{ .wpos = v };
     }
 
     pub fn toWorldPos(self: *ChunkPosition) Vec3i {
-        return .{
-            self.wx,
-            self.wy,
-            self.wz,
-        };
+        return self.wpos;
     }
 
     pub fn fromWorldPos(v: Vec3i) ChunkPosition {
-        return .{
-            .wx = v[0] * chunkSize,
-            .wy = v[1] * chunkSize,
-            .wz = v[2] * chunkSize,
-        };
+        return .{ .wpos = v * @as(Vec3i, @splat(chunkSize)) };
     }
 
     pub fn hashFromPos(pos: Vec3i) u96 {
@@ -248,35 +294,42 @@ const ChunkPosition = struct {
         return result;
     }
 
-    pub fn hashFromChunkPos(self: *ChunkPosition) u96 {
-        const pos: Vec3i = self.toChunkPos();
+    // pub fn hashFromChunkPos(self: *ChunkPosition) u96 {
+    //     const pos: Vec3i = self.toChunkPos();
 
-        const x_bits: i32 = pos[0];
-        const y_bits: i32 = pos[1];
-        const z_bits: i32 = pos[2];
+    //     const x_bits: i32 = pos[0];
+    //     const y_bits: i32 = pos[1];
+    //     const z_bits: i32 = pos[2];
 
-        var result: u96 = 0;
+    //     var result: u96 = 0;
 
-        result |= @as(u96, @as(u32, @bitCast(x_bits))) << 64;
-        result |= @as(u96, @as(u32, @bitCast(y_bits))) << 32;
-        result |= @as(u96, @as(u32, @bitCast(z_bits)));
+    //     result |= @as(u96, @as(u32, @bitCast(x_bits))) << 64;
+    //     result |= @as(u96, @as(u32, @bitCast(y_bits))) << 32;
+    //     result |= @as(u96, @as(u32, @bitCast(z_bits)));
 
-        return result;
-    }
+    //     return result;
+    // }
 
-    // pub fn posFromHash(key: u96) ChunkPosition {
-    //     return .{
-    //         .wx = @bitCast(@as(u32, @truncate(key >> 64))),
-    //         .wy = @bitCast(@as(u32, @truncate(key >> 32))),
-    //         .wz = @bitCast(@as(u32, @truncate(key))),
-    //     };
+    // pub fn hashFromWorldPos(self: *ChunkPosition) u96 {
+    //     const pos: Vec3i = self.t();
+
+    //     const x_bits: i32 = pos[0];
+    //     const y_bits: i32 = pos[1];
+    //     const z_bits: i32 = pos[2];
+
+    //     var result: u96 = 0;
+
+    //     result |= @as(u96, @as(u32, @bitCast(x_bits))) << 64;
+    //     result |= @as(u96, @as(u32, @bitCast(y_bits))) << 32;
+    //     result |= @as(u96, @as(u32, @bitCast(z_bits)));
+
+    //     return result;
     // }
 
     fn distanceToChunk(self: *ChunkPosition, b: Vec3i) f32 {
         const a: Vec3i = self.toChunkPos();
-        const b_chunk: Vec3i = @Vector(3, i32){ @divFloor(b[0], chunkSize), @divFloor(b[1], chunkSize), @divFloor(b[2], chunkSize) };
-
-        const delta: Vec3f = @floatFromInt(a - b_chunk);
+        const bc: Vec3i = @divFloor(b, @as(Vec3i, @splat(chunkSize)));
+        const delta: Vec3f = @floatFromInt(a - bc);
         return @sqrt(@reduce(.Add, @as(Vec3f, delta * delta)));
     }
 };
@@ -325,18 +378,14 @@ pub const Map = struct {
     }
 
     pub fn setBlock(position: Vec3i, b: u8) !void {
-        const chunk: *Chunk = try getChunkOrGen(toChunkPos(position));
-        chunk.setBlock(position, b);
-        @atomicStore(bool, &chunk.dirty, true, .release);
+        const chunk: ?*Chunk = getChunk(toChunkPos(position));
+        if (chunk) |c| {
+            c.setBlock(position, b);
+            @atomicStore(bool, &c.dirty, true, .release);
+        }
     }
 
-    pub fn setBlockUpdate(position: Vec3i, b: u8) !void {
-        if (!Block.valid(b)) return;
-        try updateNeighbors(position);
-        try setBlock(position, b);
-    }
-
-    pub fn updateNeighbors(position: Vec3i) !void {
+    pub fn updateBlockNeighbors(position: Vec3i) !void {
         for (Neighbor.iterable) |n| {
             const offset: Vec3i = n.relPos();
             const neighbor_pos: Vec3i = (offset + position);
@@ -346,10 +395,8 @@ pub const Map = struct {
     }
 
     pub fn addChunk(position: anytype) !void {
-        const newChunk: *Chunk = try Chunk.create();
-        newChunk.* = Chunk.Empty;
-        newChunk.*.pos = ChunkPosition.fromWorldPos(position);
-        chunks.put(newChunk.pos.hashFromChunkPos(), newChunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
+        const chunk: *Chunk = try Chunk.create(position);
+        chunks.put(chunk.hash, chunk) catch |err| std.debug.print("cannot addChunk {}", .{err});
     }
 
     pub fn getChunk(position: Vec3i) ?*Chunk {
@@ -371,8 +418,8 @@ pub const Map = struct {
 pub const Generate = struct {
     fn safeSetBlock(pos: Vec3i, block: Block.ID) !void {
         if (Map.getChunk(toChunkPos(pos)) == null) try Map.addChunk(toChunkPos(pos));
-        const targetChunk: ?*Chunk = Map.getChunk(toChunkPos(pos));
-        if (targetChunk) |t| t.setBlock(pos, @intCast(@intFromEnum(block)));
+        const chunk: ?*Chunk = Map.getChunk(toChunkPos(pos));
+        if (chunk) |c| c.setBlock(pos, @intCast(@intFromEnum(block)));
     }
 
     pub fn generateChunk(position: Vec3i) !void { // Move to Chunk type?
@@ -392,10 +439,10 @@ pub const Generate = struct {
         if (chunk) |c| {
             const size: u8 = chunkSize;
 
-            const image: rl.Image = rl.genImagePerlinNoise(size, size, c.pos.wx, c.pos.wz, 0.1);
+            const image: rl.Image = rl.genImagePerlinNoise(size, size, c.pos.wpos[0], c.pos.wpos[2], 0.1);
             defer image.unload();
 
-            const image2: rl.Image = rl.genImagePerlinNoise(size, size, c.pos.wx, c.pos.wz, 2);
+            const image2: rl.Image = rl.genImagePerlinNoise(size, size, c.pos.wpos[0], c.pos.wpos[2], 2);
             defer image2.unload();
 
             const colors: []rl.Color = rl.loadImageColors(image) catch unreachable;
@@ -423,18 +470,18 @@ pub const Generate = struct {
 
                     // Stone
                     for (0..@intCast(height)) |h| {
-                        const blockPos: Vec3i = .{ setBlockPos[0] + c.pos.wx, height - @as(i32, @intCast(h)), setBlockPos[2] + c.pos.wz };
+                        const blockPos: Vec3i = .{ setBlockPos[0] + c.pos.wpos[0], height - @as(i32, @intCast(h)), setBlockPos[2] + c.pos.wpos[2] };
                         try safeSetBlock(blockPos, .stone);
                     }
 
                     // Dirt
                     for (0..3) |h| {
-                        const blockPos: Vec3i = .{ setBlockPos[0] + c.pos.wx, height + @as(i32, @intCast(h)), setBlockPos[2] + c.pos.wz };
+                        const blockPos: Vec3i = .{ setBlockPos[0] + c.pos.wpos[0], height + @as(i32, @intCast(h)), setBlockPos[2] + c.pos.wpos[2] };
                         try safeSetBlock(blockPos, .dirt);
                     }
 
                     // Grass
-                    const blockPos: Vec3i = .{ setBlockPos[0] + c.pos.wx, height + 3, setBlockPos[2] + c.pos.wz };
+                    const blockPos: Vec3i = .{ setBlockPos[0] + c.pos.wpos[0], height + 3, setBlockPos[2] + c.pos.wpos[2] };
                     try safeSetBlock(blockPos, .grass);
 
                     // Trees
