@@ -15,7 +15,7 @@ pub fn parse(path: []const u8, T: type) !T {
     if (parsed) |payload| {
         return payload;
     } else {
-        std.debug.print("Zon parsing failed with status: {any}\n", .{status});
+        std.debug.panic("Zon parsing failed with status: {any}\n", .{status});
         return error.ZonParse;
     }
 }

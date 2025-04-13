@@ -36,7 +36,6 @@ pub fn rlTransform(self: anytype, comptime Target: type) Target {
         Vec3i => result = rl.Vector3{ .x = @floatFromInt(self[0]), .y = @floatFromInt(self[1]), .z = @floatFromInt(self[2]) },
         else => @compileError("Unsupported conversion."),
     }
-
     return result;
 }
 
@@ -49,7 +48,6 @@ pub fn slice(self: anytype, comptime n: usize) @Vector(n, @typeInfo(@TypeOf(self
     if (info.vector.len < n) @compileError("Amount cannot be greater than vector length.");
     var result: @Vector(n, @typeInfo(@TypeOf(self)).vector.child) = undefined;
     inline for (0..n) |i| result[i] = self[i];
-
     return result;
 }
 
@@ -94,21 +92,21 @@ pub fn scale(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @Type
     return self * @as(@TypeOf(self), @splat(scalar));
 }
 
-pub fn add(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-    return self + other;
-}
+// pub fn add(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
+//     return self + other;
+// }
 
-pub fn abs(self: anytype) @TypeOf(self) {
-    return @abs(self);
-}
+// pub fn abs(self: anytype) @TypeOf(self) {
+//     return @abs(self);
+// }
 
-pub fn sub(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-    return self - other;
-}
+// pub fn sub(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
+//     return self - other;
+// }
 
-pub fn mul(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-    return self * other;
-}
+// pub fn mul(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
+//     return self * other;
+// }
 
 pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
     return @reduce(.Add, self * other);
@@ -148,10 +146,10 @@ pub fn moveTowards(self: anytype, target: @TypeOf(self), step: @typeInfo(@TypeOf
     return self + direction * stepVec;
 }
 
-pub fn descaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
-    return @reduce(.Add, self / @as(@TypeOf(self), @splat(value)));
-}
+// pub fn descaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
+//     return @reduce(.Add, self / @as(@TypeOf(self), @splat(value)));
+// }
 
-pub fn scaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
-    return @reduce(.Add, self * @as(@TypeOf(self), @splat(value)));
-}
+// pub fn scaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
+//     return @reduce(.Add, self * @as(@TypeOf(self), @splat(value)));
+// }

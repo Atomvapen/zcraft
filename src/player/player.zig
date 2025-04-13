@@ -24,6 +24,7 @@ pub const Player = struct {
     stats: Stats = .{},
     // movementState: MovementState = .default,
     inventory: Inventory = undefined,
+    in_gui: bool = false,
 
     pub fn create(ctx: *Context) !*Self {
         const player: *Self = try ctx.allocator.create(Self);
@@ -41,12 +42,12 @@ pub const Player = struct {
     }
 
     pub fn placeBlock(self: *Self) !void {
+        if (self.in_gui) return;
         if (Collision.sendRayCameraTarget(self)) |hit| { // TODO: Self Collision
             var block = &self.inventory.items[0][self.inventory.hotbar.selection];
             if (block.amount == 0 or block.id == 0) return;
             const pos: Vec3i = @intFromFloat(@round(hit.position + hit.normal));
-            const b: u8 = map.Map.getBlock(pos);
-            if (b != 0) return;
+            if (map.Map.getBlock(pos) != 0) return;
             try map.Map.setBlockUpdate(pos, block.id);
             block.amount -= 1;
             if (block.amount == 0) block.id = 0;
@@ -54,6 +55,7 @@ pub const Player = struct {
     }
 
     pub fn breakBlock(self: *Self) !void {
+        if (self.in_gui) return;
         if (Collision.sendRayCameraTarget(self)) |hit| {
             const pos: Vec3i = @intFromFloat(@round(hit.position));
             try map.Map.setBlockUpdate(pos, 0);
@@ -61,6 +63,7 @@ pub const Player = struct {
     }
 
     pub fn getBlock(self: *Self) void {
+        if (self.in_gui) return;
         if (Collision.sendRayCameraTarget(self)) |hit| {
             const pos: Vec3i = @intFromFloat(@round(hit.position));
             if (map.Map.getChunk(map.toChunkPos(pos))) |c| {
@@ -126,6 +129,8 @@ pub const Player = struct {
         try self.updateMap(ctx);
         try self.handleKeybindings(ctx);
 
+        self.in_gui = (self.inventory.open);
+
         // rl.updateCamera(&self.camera, rl.CameraMode.free);
         self.applyGravity(@floatCast(ctx.deltatime));
         self.movePlayer(@floatCast(ctx.deltatime));
@@ -133,6 +138,7 @@ pub const Player = struct {
     }
 
     fn movePlayer(self: *Self, deltaTime: f32) void {
+        if (self.in_gui) return;
         self.stats.speed = 15.0 * deltaTime * 0.5;
 
         const forward = rl.Vector3.normalize(self.camera.target.subtract(self.camera.position));

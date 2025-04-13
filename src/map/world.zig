@@ -74,13 +74,13 @@ const Chunk = struct {
             if (block.id == .air) continue;
 
             const bc: Vec3i = .{ @intCast(x), @intCast(y), @intCast(z) };
-            const bw: Vec3i = vec.add(bc, chunkPosWorld);
+            const bw: Vec3i = bc + chunkPosWorld;
 
             for (Neighbor.iterable) |neighbor| {
                 const offset: Vec3i = neighbor.relPos();
 
-                const nc: Vec3i = vec.add(bc, offset);
-                const nw: Vec3i = vec.add(bw, offset);
+                const nc: Vec3i = bc + offset;
+                const nw: Vec3i = bw + offset;
 
                 const nx: i32 = nc[0];
                 const ny: i32 = nc[1];
@@ -339,7 +339,7 @@ pub const Map = struct {
     pub fn updateNeighbors(position: Vec3i) !void {
         for (Neighbor.iterable) |n| {
             const offset: Vec3i = n.relPos();
-            const neighbor_pos: Vec3i = vec.add(offset, position);
+            const neighbor_pos: Vec3i = (offset + position);
             const chunk: *Chunk = try getChunkOrGen(toChunkPos(neighbor_pos));
             if (chunk.getBlock(neighbor_pos) != 0) @atomicStore(bool, &chunk.dirty, true, .release);
         }
@@ -390,16 +390,16 @@ pub const Generate = struct {
         try Map.chunks.ensureTotalCapacity(chunk_count); // Total or unused?
 
         if (chunk) |c| {
-            const size = chunkSize;
+            const size: u8 = chunkSize;
 
-            const image = rl.genImagePerlinNoise(size, size, c.pos.wx, c.pos.wz, 0.1);
+            const image: rl.Image = rl.genImagePerlinNoise(size, size, c.pos.wx, c.pos.wz, 0.1);
             defer image.unload();
 
-            const image2 = rl.genImagePerlinNoise(size, size, c.pos.wx, c.pos.wz, 2);
+            const image2: rl.Image = rl.genImagePerlinNoise(size, size, c.pos.wx, c.pos.wz, 2);
             defer image2.unload();
 
-            const colors = rl.loadImageColors(image) catch unreachable;
-            const colors2 = rl.loadImageColors(image2) catch unreachable;
+            const colors: []rl.Color = rl.loadImageColors(image) catch unreachable;
+            const colors2: []rl.Color = rl.loadImageColors(image2) catch unreachable;
 
             for (0..@intCast(image.height)) |z| {
                 for (0..@intCast(image.width)) |x| {
@@ -449,7 +449,7 @@ pub const Generate = struct {
     }
 
     pub const Structures = struct {
-        const BlockDef = struct { pos: rl.Vector3, id: Block.ID };
+        const BlockDef = struct { pos: Vec3i, id: Block.ID };
         const StructureData = struct { blocks: []const BlockDef };
         const StructType = enum(u8) {
             oak_tree,
@@ -479,9 +479,7 @@ pub const Generate = struct {
                 if (payload.blocks.len == 0) return;
 
                 for (payload.blocks) |block| {
-                    const block_pos: Vec3i = vec.rlTransform(block.pos, Vec3i);
-                    const world_pos: Vec3i = vec.add(base_pos, block_pos);
-
+                    const world_pos: Vec3i = (base_pos + block.pos);
                     try safeSetBlock(world_pos, block.id);
                 }
             }

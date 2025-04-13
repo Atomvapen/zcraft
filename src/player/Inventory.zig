@@ -1,16 +1,25 @@
 const Self = @This();
 const std = @import("std");
+const Block = @import("../map/blocks.zig").Block;
 
-const rows: i32 = 8;
+const rows: i32 = 3;
 const columns: i32 = 9;
 
 items: [rows][columns]Item = undefined,
 hotbar: Hotbar = .{},
 open: bool = false,
 
+const Kind = enum(u8) {
+    block,
+    // Tool,
+    // Consumable,
+};
+
+// TODO: Item should be a union
 const Item = struct {
     id: u8,
     amount: i32,
+    kind: Kind = .block,
 };
 
 const Position = struct {
