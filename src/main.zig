@@ -39,20 +39,16 @@ pub fn main() !void {
 
     try map.Generate.Structures.init();
 
+    renderer.init();
+
     { // Debug block
         // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
         // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
         ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);
     }
 
-    rl.gl.rlDisableBackfaceCulling();
-
-    while (!rl.windowShouldClose() and !(ctx.state.current == .Exiting)) {
+    while (!rl.windowShouldClose() and ctx.state.current != .Exiting) {
         try ctx.update();
-
-        rl.beginDrawing();
-        rl.clearBackground(rl.Color.gray);
-
         if (ctx.state.current != ctx.state.previous) {
             gui.DrawBuffer.clear();
             ctx.state.previous = ctx.state.current;
@@ -64,19 +60,6 @@ pub fn main() !void {
             }
         }
 
-        switch (ctx.state.current) {
-            .Menu => try gui.Window.main.render(),
-            .Playing => try renderer.renderGame(ctx),
-            .Settings => try gui.Window.settings.render(ctx),
-            else => {},
-        }
-
-        if (ctx.settings.debug) {
-            renderer.drawDebug();
-        }
-
-        gui.DrawBuffer.update();
-
-        rl.endDrawing();
+        try renderer.drawFrame(ctx);
     }
 }

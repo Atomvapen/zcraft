@@ -6,6 +6,81 @@ pub const Vec2f = @Vector(2, f32);
 pub const Vec3f = @Vector(3, f32);
 pub const Vec4f = @Vector(4, f32);
 
+pub fn normalize(v: anytype) @TypeOf(v) {
+    return v / @as(@TypeOf(v), @splat(length(v)));
+}
+
+pub fn length(v: anytype) @typeInfo(@TypeOf(v)).vector.child {
+    return @sqrt(@reduce(.Add, v * v));
+}
+
+pub fn distance(a: anytype, b: @TypeOf(a)) @typeInfo(@TypeOf(a)).vector.child {
+    const diff = a - b;
+    return @sqrt(@reduce(.Add, diff * diff));
+}
+
+pub fn distanceSquared(a: anytype, b: @TypeOf(a)) @typeInfo(@TypeOf(a)).vector.child {
+    const diff = a - b;
+    return @reduce(.Add, diff * diff);
+}
+
+pub fn descale(v: anytype, scalar: @typeInfo(@TypeOf(v)).vector.child) @TypeOf(v) {
+    return v / @as(@TypeOf(v), @splat(scalar));
+}
+
+pub fn reflect(v: anytype, n: @TypeOf(v)) @TypeOf(v) {
+    const dotProduct = dot(v * n);
+    return v - (n * (2 * dotProduct));
+}
+
+pub fn mod(v: anytype, scalar: @typeInfo(@TypeOf(v)).vector.child) @TypeOf(v) {
+    return @mod(v, @as(@TypeOf(v), @splat(scalar)));
+}
+
+pub fn scale(v: anytype, scalar: @typeInfo(@TypeOf(v)).vector.child) @TypeOf(v) {
+    return v * @as(@TypeOf(v), @splat(scalar));
+}
+
+pub fn invert(v: anytype) @TypeOf(v) {
+    return v * @as(@TypeOf(v), @splat(-1));
+}
+
+pub fn negate(v: anytype) @TypeOf(v) {
+    return -v;
+}
+
+pub fn max(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return @max(a, b);
+}
+
+pub fn min(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return @min(a, b);
+}
+
+pub fn add(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return a + b;
+}
+
+pub fn abs(v: anytype) @TypeOf(v) {
+    return @abs(v);
+}
+
+pub fn sub(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return a - b;
+}
+
+pub fn mul(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return a * b;
+}
+
+pub fn div(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+    return a / b;
+}
+
+pub fn dot(a: anytype, b: @TypeOf(a)) @typeInfo(@TypeOf(a)).vector.child {
+    return @reduce(.Add, a * b);
+}
+
 /// Produces a new vector from of type `target`.
 ///
 /// Non-same vector length result in compile errors. Non-valid type conversion result in compile errors.
@@ -29,10 +104,10 @@ pub fn rlTransform(self: anytype, comptime Target: type) Target {
     switch (@TypeOf(self)) {
         rl.Vector3 => switch (Target) {
             Vec3i => result = @Vector(3, i32){ @as(i32, @intFromFloat(self.x)), @as(i32, @intFromFloat(self.y)), @as(i32, @intFromFloat(self.z)) },
-            Vec3f => result = @Vector(3, f32){ self.x, self.y, self.z },
+            Vec3f => result = @Vector(3, f32){ @floatCast(self.x), @floatCast(self.y), @floatCast(self.z) },
             else => @compileError("Unsupported conversion."),
         },
-        Vec3f => result = rl.Vector3{ .x = self[0], .y = self[1], .z = self[2] },
+        Vec3f => result = rl.Vector3{ .x = @floatCast(self[0]), .y = @floatCast(self[1]), .z = @floatCast(self[2]) },
         Vec3i => result = rl.Vector3{ .x = @floatFromInt(self[0]), .y = @floatFromInt(self[1]), .z = @floatFromInt(self[2]) },
         else => @compileError("Unsupported conversion."),
     }
@@ -42,83 +117,117 @@ pub fn rlTransform(self: anytype, comptime Target: type) Target {
 /// Produces a new vector from the first `n` elements of the imput vector.
 ///
 /// Out-of-bounds element indexes of `n` result in compile errors.
-pub fn slice(self: anytype, comptime n: usize) @Vector(n, @typeInfo(@TypeOf(self)).vector.child) {
-    const info = @typeInfo(@TypeOf(self));
+pub fn slice(v: anytype, comptime n: usize) @Vector(n, @typeInfo(@TypeOf(v)).vector.child) {
+    const info = @typeInfo(@TypeOf(v));
     if (info != .vector) @compileError("slice() can only be used on vectors.");
     if (info.vector.len < n) @compileError("Amount cannot be greater than vector length.");
-    var result: @Vector(n, @typeInfo(@TypeOf(self)).vector.child) = undefined;
-    inline for (0..n) |i| result[i] = self[i];
+    var result: @Vector(n, @typeInfo(@TypeOf(v)).vector.child) = undefined;
+    inline for (0..n) |i| result[i] = v[i];
     return result;
 }
 
-pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).vector.child) {
-    const info = @typeInfo(@TypeOf(self));
+pub fn rotate2D(v: anytype, angle: f32) @TypeOf(v) {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("rotate2D() can only be used on vectors.");
+    if (info.vector.len == 3) @compileError("Vector must have 2 elements.");
+
+    const cosTheta = @cos(angle);
+    const sinTheta = @sin(angle);
+
+    return .{
+        v[0] * cosTheta - v[1] * sinTheta, // x′ = x * cos(θ) − y * sin(θ)
+        v[0] * sinTheta + v[1] * cosTheta, // y' = x * sin(θ) + y * cos(θ)
+    };
+}
+
+/// Returns the `.x` component of a vector.
+///
+/// Supports any vector with at least 1 component.
+pub fn x(v: anytype) @typeInfo(@TypeOf(v)).vector.child {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("x() can only be used on vectors.");
+    if (info.vector.len < 1) @compileError("Vector must have at least 1 element.");
+    return v[0];
+}
+
+/// Returns the `.y` component of a vector.
+///
+/// Supports any vector with at least 2 components.
+pub fn y(v: anytype) @typeInfo(@TypeOf(v)).vector.child {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("y() can only be used on vectors.");
+    if (info.vector.len < 2) @compileError("Vector must have at least 2 element.");
+    return v[1];
+}
+
+/// Returns the `.z` component of a vector.
+///
+/// Supports any vector with at least 3 components.
+pub fn z(v: anytype) @typeInfo(@TypeOf(v)).vector.child {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("z() can only be used on vectors.");
+    if (info.vector.len < 3) @compileError("Vector must have at least 3 element.");
+    return v[2];
+}
+
+/// Returns the `.w` component of a vector.
+///
+/// Supports any vector with at least 4 components.
+pub fn w(v: anytype) @typeInfo(@TypeOf(v)).vector.child {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("w() can only be used on vectors.");
+    if (info.vector.len < 4) @compileError("Vector must have at least 4 element.");
+    return v[3];
+}
+
+/// Returns a new vector containing the `.x` and `.y` components of the input.
+///
+/// Works with any vector that has at least 2 components.
+pub fn xy(v: anytype) @Vector(2, @typeInfo(@TypeOf(v)).vector.child) {
+    const info = @typeInfo(@TypeOf(v));
     if (info != .vector) @compileError("xy() can only be used on vectors.");
     if (info.vector.len < 2) @compileError("Vector must have at least 2 elements.");
-    return @shuffle(info.vector.child, self, undefined, [_]i32{ 0, 1 });
+    return @shuffle(info.vector.child, v, undefined, [_]i32{ 0, 1 });
 }
 
-pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).vector.child) {
-    const info = @typeInfo(@TypeOf(self));
+/// Returns a new vector containing the `.x`, `.y`, and `.z` components of the input.
+///
+/// Works with any vector that has at least 3 components.
+pub fn xyz(v: anytype) @Vector(3, @typeInfo(@TypeOf(v)).vector.child) {
+    const info = @typeInfo(@TypeOf(v));
     if (info != .vector) @compileError("xyz() can only be used on vectors.");
     if (info.vector.len < 3) @compileError("Vector must have at least 3 elements.");
-    return @shuffle(@typeInfo(@TypeOf(self)).vector.child, self, undefined, [_]i32{ 0, 1, 2 });
+    return @shuffle(@typeInfo(@TypeOf(v)).vector.child, v, undefined, [_]i32{ 0, 1, 2 });
 }
 
-pub fn xyzw(self: anytype) @Vector(4, @typeInfo(@TypeOf(self)).vector.child) {
-    const info = @typeInfo(@TypeOf(self));
+/// Returns a new vector containing the `.x`, `.y`, `.z`, and `.w` components of the input.
+///
+/// Works with any vector that has at least 4 components.
+pub fn xyzw(v: anytype) @Vector(4, @typeInfo(@TypeOf(v)).vector.child) {
+    const info = @typeInfo(@TypeOf(v));
     if (info != .vector) @compileError("xyzw() can only be used on vectors.");
     if (info.vector.len < 4) @compileError("Vector must have at least 4 elements.");
-    return @shuffle(info.vector.child, self, undefined, [_]i32{ 0, 1, 2, 3 });
+    return @shuffle(info.vector.child, v, undefined, [_]i32{ 0, 1, 2, 3 });
 }
 
-pub fn normalize(self: anytype) @TypeOf(self) {
-    return self / @as(@TypeOf(self), @splat(length(self)));
+/// Reorders the components of a vector based on a given mask.
+///
+/// The mask is an array of indices that specifies how to reorder the vector components.
+pub fn shuffle(v: anytype, mask: []i32) @Vector(mask.len, @typeInfo(@TypeOf(v)).vector.child) {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("shuffle() can only be used on vectors.");
+    if (info.vector.len < mask.len) @compileError("Mask length cannot exceed vector length.");
+    return @shuffle(info.vector.child, v, undefined, mask);
 }
 
-pub fn length(self: anytype) @typeInfo(@TypeOf(self)).vector.child {
-    return @sqrt(@reduce(.Add, self * self));
-}
-
-pub fn descale(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-    return self / @as(@TypeOf(self), @splat(scalar));
-}
-
-pub fn mod(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-    return @mod(self, @as(@TypeOf(self), @splat(scalar)));
-}
-
-pub fn scale(self: anytype, scalar: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-    return self * @as(@TypeOf(self), @splat(scalar));
-}
-
-// pub fn add(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-//     return self + other;
-// }
-
-// pub fn abs(self: anytype) @TypeOf(self) {
-//     return @abs(self);
-// }
-
-// pub fn sub(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-//     return self - other;
-// }
-
-// pub fn mul(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-//     return self * other;
-// }
-
-pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
-    return @reduce(.Add, self * other);
-}
-
-pub fn addProduct(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
-    return @reduce(.Add, self + other);
-}
-
-pub fn crossProduct(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
+/// Computes the cross product of two 3D vectors.
+///
+/// The result is a vector that is perpendicular to both `a` and `b`.
+/// Only 3D vectors are supported.
+pub fn cross(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
     const info = @typeInfo(@TypeOf(a));
-    if (info.len != 3) @compileError("crossProduct only supports 3D vectors.");
+    if (info != .vector) @compileError("crossProduct() can only be used on vectors.");
+    if (info.vector.len != 3) @compileError("crossProduct only supports 3D vectors.");
     return @Vector(3, info.vector.child){
         a[1] * b[2] - a[2] * b[1], // x = (ay * bz - az * by)
         a[2] * b[0] - a[0] * b[2], // y = (az * bx - ax * bz)
@@ -126,30 +235,51 @@ pub fn crossProduct(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
     };
 }
 
-pub fn subProduct(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
-    return @reduce(.Add, self - other);
-}
-
-pub fn compare(a: anytype, b: @TypeOf(a)) bool {
+/// Returns true if all components of `a` and `b` are equal.
+pub fn equal(a: anytype, b: @TypeOf(a)) bool {
+    const info = @typeInfo(@TypeOf(a));
+    if (info != .vector) @compileError("equal() can only be used on vectors.");
     return @reduce(.And, a == b);
 }
 
-pub fn moveTowards(self: anytype, target: @TypeOf(self), step: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-    const direction = target - self;
+/// Clamps each component of vector `v` between the scalar values `min_v` and `max_v`.
+///
+/// The same scalar `min_v` and `max_v` are applied to all components of `v`.
+pub fn clampComponents(v: anytype, min_v: f32, max_v: f32) @TypeOf(v) {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("clampComponents() can only be used on vectors.");
+    var result: @TypeOf(v) = undefined;
+    for (0..info.vector.len) |i| result[i] = @max(min_v, @min(v[i], max_v));
+    return result;
+}
+
+/// Clamps each component of vector `v` between the corresponding components
+/// of vectors `min_v` and `max_v`.
+pub fn clamp(v: anytype, min_v: @TypeOf(v), max_v: @TypeOf(v)) @TypeOf(v) {
+    const info = @typeInfo(@TypeOf(v));
+    if (info != .vector) @compileError("clamp() can only be used on vectors.");
+    return @max(min_v, @min(v, max_v));
+}
+
+/// Moves vector `start` towards vector `end` by a maximum distance of `step`.
+pub fn moveTowards(start: anytype, end: @TypeOf(start), step: @typeInfo(@TypeOf(start)).vector.child) @TypeOf(start) {
+    const info = @typeInfo(@TypeOf(start));
+    if (info != .vector) @compileError("moveTowards() can only be used on vectors.");
+    const direction = end - start;
     const distanceSq = @reduce(.Add, direction * direction);
     const stepSq = step * step;
 
-    if (distanceSq <= stepSq) return target;
+    if (distanceSq <= stepSq) return end;
 
     const len = @sqrt(distanceSq);
-    const stepVec = @as(@TypeOf(self), @splat(step / len));
-    return self + direction * stepVec;
+    const stepVec = @as(@TypeOf(start), @splat(step / len));
+    return start + direction * stepVec;
 }
 
-// pub fn descaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
-//     return @reduce(.Add, self / @as(@TypeOf(self), @splat(value)));
-// }
-
-// pub fn scaleProduct(self: anytype, value: @typeInfo(@TypeOf(self)).vector.child) @typeInfo(@TypeOf(self)).vector.child {
-//     return @reduce(.Add, self * @as(@TypeOf(self), @splat(value)));
-// }
+/// Linearly interpolates between `start` and `end` by the factor `t`.
+/// `t` should be in the range `0..1`.
+pub fn lerp(start: anytype, end: @TypeOf(start), t: @typeInfo(@TypeOf(start)).vector.child) @TypeOf(start) {
+    const info = @typeInfo(@TypeOf(start));
+    if (info != .vector) @compileError("lerp() can only be used on vectors.");
+    return start + (end - start) * t;
+}

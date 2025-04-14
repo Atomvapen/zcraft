@@ -282,7 +282,7 @@ pub const Collision = struct {
         while (distance < max_distance) : (distance += step_amount) {
             const offset = vec.scale(ray_dir, distance);
             const current_pos = @round(camera_pos + offset);
-            if (vec.compare(current_pos, previous_pos)) continue;
+            if (vec.equal(current_pos, previous_pos)) continue;
 
             const block_pos: Vec3i = @intFromFloat(current_pos);
             if (map.Map.getBlock(block_pos) != 0) {

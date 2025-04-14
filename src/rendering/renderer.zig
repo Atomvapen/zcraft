@@ -7,6 +7,25 @@ const shader = @import("shader.zig");
 const vec = @import("../math/vec.zig");
 const gui = @import("../gui/gui.zig");
 
+pub fn init() void {
+    rl.gl.rlDisableBackfaceCulling();
+}
+
+pub fn drawFrame(ctx: *Context) !void {
+    rl.beginDrawing();
+    defer rl.endDrawing();
+    rl.clearBackground(rl.Color.gray);
+
+    switch (ctx.state.current) {
+        .Menu => try gui.Window.main.render(),
+        .Playing => try renderGame(ctx),
+        .Settings => try gui.Window.settings.render(ctx),
+        else => {},
+    }
+
+    gui.DrawBuffer.update();
+}
+
 pub fn render3D(ctx: *Context) !void {
     map.draw(ctx);
     try Render.shadow(ctx.player);
@@ -15,6 +34,7 @@ pub fn render3D(ctx: *Context) !void {
 
 pub fn render2D(ctx: *Context) !void {
     try Render.ui(ctx.player, ctx);
+    if (ctx.settings.debug) drawDebug();
 }
 
 pub fn renderGame(ctx: *Context) !void {

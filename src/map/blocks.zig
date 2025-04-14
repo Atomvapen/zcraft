@@ -1,7 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
-const Context = @import("../Context.zig");
-const zon = @import("../zon.zig");
+const root = @import("root");
 
 pub const Face = enum { top, bottom, side };
 const faceCount: usize = @typeInfo(Face).@"enum".fields.len;
@@ -10,41 +9,31 @@ const maxBlockCount: usize = std.math.maxInt(maxBlockType);
 
 pub var sprite: rl.Texture2D = undefined;
 
-const vec = @import("../math/vec.zig");
-const Vec3f = vec.Vec3f;
-const Vec3i = vec.Vec3i;
-
 var transparent: [maxBlockCount]bool = undefined;
 var solid: [maxBlockCount]bool = undefined;
-var collision: [maxBlockCount]bool = undefined; // set to - [_]bool{false} ** maxBlockCount - maybe?
+var collision: [maxBlockCount]bool = undefined;
 var icon: [maxBlockCount]rl.Texture2D = undefined;
-var faceIndex: [maxBlockCount][faceCount]u8 = undefined; //top, bottom, side
+var faceIndex: [maxBlockCount][faceCount]u8 = undefined;
 // var texture: [maxBlockCount]rl.Texture = undefined;
+// var names: [maxBlockCount][:0]const u8 = undefined;
+// var descriptions: [maxBlockCount][:0]const u8 = undefined;
 
 pub fn init() !void {
-    const faces = struct { top: u8, bottom: u8, side: u8 };
+    const faces = struct { top: u8 = 0, bottom: u8 = 1, side: u8 = 2 };
     const BlockDef = struct {
         id: Block.ID,
-        // name: []const u8 ,
-        icon_path: [:0]const u8,
-        // texture_path: []const u8,
+        // name: [:0]const u8 ,
+        // description: [:0]const u8 ,
+        icon_path: ?[:0]const u8,
         transparent: bool,
         collision: bool,
-        // texture_faces
-        // sprite_indexes
         faces: ?faces,
     };
+    const blocks_file = @embedFile("blocks.zig.zon");
+    const parsed = try std.zon.parse.fromSlice([]const BlockDef, root.allocator, blocks_file, null, .{});
 
-    const BlocksData = struct {
-        blocks: []const BlockDef,
-    };
-
-    const parsed = try zon.parse("src/map/blocks.zig.zon", BlocksData);
-
-    for (parsed.blocks, 0..) |def, i| {
-        if (def.icon_path.len > 0) {
-            icon[i] = try rl.loadTexture(def.icon_path);
-        }
+    for (parsed, 0..) |def, i| {
+        if (def.icon_path) |path| icon[i] = try rl.loadTexture(path);
         transparent[i] = def.transparent;
         collision[i] = def.collision;
         if (def.faces) |face| {
@@ -61,11 +50,7 @@ pub fn init() !void {
 }
 
 pub fn deinit() void {
-    for (0..icon.len) |i| {
-        if (icon[i].id != 0) {
-            icon[i].unload();
-        }
-    }
+    for (0..icon.len) |i| if (icon[i].id != 0) icon[i].unload();
     sprite.unload();
 }
 
@@ -73,13 +58,20 @@ pub const Block = struct {
     pub const ID = enum(maxBlockType) { air, grass, dirt, glass, brick, stone, wood, leaf, _ };
 
     id: ID = @enumFromInt(0),
-    // data: Data = .{},
 
     pub inline fn getFaceTexture(self: Block, face: Face) u8 {
         const indexOffset: u8 = 1;
 
         return faceIndex[@intFromEnum(self.id)][@intFromEnum(face)] - indexOffset;
     }
+
+    // pub inline fn name(self: Block) [:0]const u8 {
+    //     return names[@intFromEnum(self.id)];
+    // }
+
+    // pub inline fn description(self: Block) [:0]const u8 {
+    //     return descriptions[@intFromEnum(self.id)];
+    // }
 
     // pub inline fn getTexture(self: Block, side: enum { top, bottom, side }) u8 {
     //     return texture[@intFromEnum(self.id)];
@@ -114,7 +106,7 @@ pub const Block = struct {
         return &icon[@intFromEnum(self.id)];
     }
 
-    pub inline fn valid(b: u8) bool {
+    pub inline fn valid(b: u8) bool { //TODO: Remove
         const field_count: usize = @typeInfo(ID).@"enum".fields.len;
         return b < field_count;
     }

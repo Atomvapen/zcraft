@@ -5,7 +5,6 @@ const root = @import("root");
 const rl = @import("raylib");
 const Context = @import("../Context.zig");
 const Blocks = @import("blocks.zig");
-const zon = @import("../zon.zig");
 const vec = @import("../math/vec.zig");
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
@@ -247,7 +246,6 @@ const Chunk = struct {
         return self.blocks[x][y][z];
     }
 
-    /// Worldpos set block
     pub fn setBlock(self: *Chunk, pos: Vec3i, b: u8) void {
         const cpos = vec.mod(pos, chunkSize);
 
@@ -496,39 +494,31 @@ pub const Generate = struct {
     }
 
     pub const Structures = struct {
-        const BlockDef = struct { pos: Vec3i, id: Block.ID };
-        const StructureData = struct { blocks: []const BlockDef };
+        const StructureDef = struct { pos: Vec3i, id: Block.ID };
         const StructType = enum(u8) {
             oak_tree,
+            // birch_tree,
             _,
-
-            const iterable: [1]StructType = [_]StructType{@enumFromInt(0)};
         };
 
-        var oak_tree: StructureData = undefined;
+        var oak_tree: []const StructureDef = undefined;
+        // var birch_tree: StructureData = undefined;
 
         pub fn init() !void {
-            for (StructType.iterable) |structure| {
-                switch (structure) {
-                    .oak_tree => Structures.oak_tree = try zon.parse("src/map/structures/oak_tree.zig.zon", StructureData),
-                    else => continue,
-                }
-            }
+            const oak_tree_file = @embedFile("structures/oak_tree.zig.zon");
+            // const birch_tree_file = @embedFile("structures/birch_tree.zig.zon");
+            oak_tree = try std.zon.parse.fromSlice([]const StructureDef, root.allocator, oak_tree_file, null, .{});
         }
 
         pub fn place(structure: StructType, base_pos: Vec3i) !void {
-            const data: ?StructureData = switch (structure) {
+            const data: []const StructureDef = switch (structure) {
                 .oak_tree => Structures.oak_tree,
-                else => null,
+                else => return,
             };
 
-            if (data) |payload| {
-                if (payload.blocks.len == 0) return;
-
-                for (payload.blocks) |block| {
-                    const world_pos: Vec3i = (base_pos + block.pos);
-                    try safeSetBlock(world_pos, block.id);
-                }
+            for (data) |block| {
+                const world_pos: Vec3i = (base_pos + block.pos);
+                try safeSetBlock(world_pos, block.id);
             }
         }
     };
