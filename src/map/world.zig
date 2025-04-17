@@ -334,6 +334,7 @@ const ChunkPosition = struct {
 
 pub const Map = struct {
     var chunks: std.AutoHashMap(u96, *Chunk) = undefined;
+    pub var created: bool = false;
 
     pub fn init() void {
         chunks = std.AutoHashMap(u96, *Chunk).init(root.allocator);

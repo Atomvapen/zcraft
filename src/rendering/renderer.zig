@@ -20,10 +20,18 @@ pub fn drawFrame(ctx: *Context) !void {
         .Menu => try gui.Window.main.render(),
         .Playing => try renderGame(ctx),
         .Settings => try gui.Window.settings.render(ctx),
+        .SettingsInGame => try gui.Window.settingsInGame.render(ctx),
         else => {},
     }
 
     gui.DrawBuffer.update();
+}
+
+pub fn setCursorVisibility(ctx: *Context) void {
+    if (ctx.player.inventory.open != ctx.player.cursorEnabled) {
+        ctx.player.cursorEnabled = ctx.player.inventory.open;
+        if (ctx.player.inventory.open) rl.enableCursor() else rl.disableCursor();
+    }
 }
 
 pub fn render3D(ctx: *Context) !void {
@@ -38,9 +46,9 @@ pub fn render2D(ctx: *Context) !void {
 }
 
 pub fn renderGame(ctx: *Context) !void {
-    ctx.generated = true;
+    if (map.created != true) map.created = true;
 
-    ctx.setCursorVisibility();
+    setCursorVisibility(ctx);
 
     try shader.drawShadow(ctx);
     rl.beginMode3D(ctx.player.camera);

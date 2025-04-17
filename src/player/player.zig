@@ -25,6 +25,7 @@ pub const Player = struct {
     // movementState: MovementState = .default,
     inventory: Inventory = undefined,
     in_gui: bool = false,
+    cursorEnabled: bool = false,
 
     pub fn create(ctx: *Context) !*Self {
         const player: *Self = try ctx.allocator.create(Self);
@@ -80,35 +81,34 @@ pub const Player = struct {
     // |
     // V
 
-    fn handleKeybindings(self: *Self, ctx: *Context) !void {
-        for (49..57 + 1) |key| {
-            if (rl.isKeyPressed(@enumFromInt(key))) self.inventory.hotbar.selection = @intCast(key - 49);
-        }
-
-        // Scroll wheel
+    fn scrollHotbar(self: *Self, ctx: *Context) void {
         const wheel_move: f32 = rl.getMouseWheelMove();
         if (wheel_move != 0) {
-            var direction: f32 = 1;
-            if (ctx.settings.reverseScrolling) direction = -1;
-            const block_count: u8 = 9;
+            const direction: f32 = if (ctx.settings.reverseScrolling) -1 else 1;
+            const slot_count: u8 = Inventory.columns;
             const wheel_move_int: i32 = @intFromFloat(wheel_move * direction);
-            self.inventory.hotbar.selection = @intCast(@mod((self.inventory.hotbar.selection + block_count + wheel_move_int), block_count));
-            if (self.inventory.hotbar.selection == -1) self.inventory.hotbar.selection = block_count;
+            self.inventory.hotbar.selection = @intCast(@mod(self.inventory.hotbar.selection + slot_count + wheel_move_int, slot_count));
+        }
+    }
+
+    fn handleKeybindings(self: *Self, ctx: *Context) void {
+        const key: rl.KeyboardKey = rl.getKeyPressed();
+        switch (key) {
+            .tab => self.inventory.open = !self.inventory.open,
+            .zero, .one, .two, .three, .four, .five, .six, .seven, .eight, .nine => self.inventory.hotbar.selection = @as(u8, @intCast(@intFromEnum((key)))) - 49,
+            .f3 => ctx.settings.debug = !ctx.settings.debug,
+            .f11 => rl.toggleFullscreen(),
+            .escape => ctx.state.current = .SettingsInGame,
+            .k => @import("../rendering/shader.zig").lightCam.target.z += 0.01,
+            .l => @import("../rendering/shader.zig").lightCam.target.z -= 0.01,
+            else => {},
         }
 
-        if (rl.isMouseButtonPressed(.right)) {
-            try self.placeBlock();
-        }
+        self.scrollHotbar(ctx);
 
-        if (rl.isMouseButtonPressed(.left)) {
-            try self.breakBlock();
-        }
-
-        if (rl.isMouseButtonPressed(.middle)) {
-            self.getBlock();
-        }
-
-        if (rl.isKeyPressed(.tab)) self.inventory.open = !self.inventory.open;
+        if (rl.isMouseButtonPressed(.right)) self.placeBlock() catch {};
+        if (rl.isMouseButtonPressed(.left)) self.breakBlock() catch {};
+        if (rl.isMouseButtonPressed(.middle)) self.getBlock();
     }
 
     fn updateMap(self: *Player, ctx: *Context) !void {
@@ -129,7 +129,7 @@ pub const Player = struct {
 
     pub fn update(self: *Self, ctx: *Context) !void {
         try self.updateMap(ctx);
-        try self.handleKeybindings(ctx);
+        self.handleKeybindings(ctx);
 
         self.in_gui = (self.inventory.open);
 

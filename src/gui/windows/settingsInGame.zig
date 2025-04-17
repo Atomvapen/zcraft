@@ -11,7 +11,7 @@ pub fn render(ctx: *Context) !void {
         rl.enableCursor();
         try drawBackground();
         gui.DrawBuffer.append(Component{ .gradiant = try .create(.{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }) });
-        gui.DrawBuffer.append(Component{ .button = try .create("Back", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .menu) });
+        gui.DrawBuffer.append(Component{ .button = try .create("Back", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
         gui.DrawBuffer.append(Component{ .button = try .create("Exit", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = 400, .height = 50 }, .exit) });
         gui.DrawBuffer.append(Component{ .slider = try .create(.{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 390, .width = 400, .height = 50 }, 0, 100, &ctx.settings.volume, 40) });
         gui.DrawBuffer.append(Component{ .checkBox = try .create("Safe", 20, .{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 460, .width = 50, .height = 50 }, &ctx.settings.reverseScrolling) });

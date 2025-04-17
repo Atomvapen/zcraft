@@ -49,12 +49,13 @@ pub fn main() !void {
 
     while (!rl.windowShouldClose() and ctx.state.current != .Exiting) {
         try ctx.update();
+
         if (ctx.state.current != ctx.state.previous) {
             gui.DrawBuffer.clear();
             ctx.state.previous = ctx.state.current;
 
             switch (ctx.state.current) {
-                .Menu, .Settings => rl.enableCursor(),
+                .Menu, .Settings, .SettingsInGame => rl.enableCursor(),
                 .Playing => rl.disableCursor(),
                 else => {},
             }

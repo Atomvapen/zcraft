@@ -2,8 +2,8 @@ const Self = @This();
 const std = @import("std");
 const Block = @import("../map/blocks.zig").Block;
 
-const rows: i32 = 3;
-const columns: i32 = 9;
+pub const rows: i32 = 3;
+pub const columns: i32 = 9;
 
 items: [rows][columns]Item = undefined,
 hotbar: Hotbar = .{},

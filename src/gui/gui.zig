@@ -3,7 +3,33 @@ const std = @import("std");
 const Context = @import("../Context.zig");
 const root = @import("root");
 
-pub const Callback = @import("callback.zig");
+pub const Callback = struct {
+    pub const Action = enum(u8) {
+        play,
+        exit,
+        settings,
+        settingsInGame,
+        menu,
+        _,
+    };
+
+    pub var context: *Context = undefined;
+
+    pub fn init(ctx: *Context) void {
+        context = ctx;
+    }
+
+    pub fn run(action: Action) void {
+        switch (action) {
+            .exit => context.state.current = .Exiting,
+            .play => context.state.current = .Playing,
+            .settings => context.state.current = .Settings,
+            .settingsInGame => context.state.current = .SettingsInGame,
+            .menu => context.state.current = .Menu,
+            else => unreachable,
+        }
+    }
+};
 
 pub const Component = union(enum) {
     const Button = @import("components/Button.zig");
@@ -70,6 +96,7 @@ pub const Component = union(enum) {
 pub const Window = struct {
     pub const main = @import("windows/main.zig");
     pub const settings = @import("windows/settings.zig");
+    pub const settingsInGame = @import("windows/settingsInGame.zig");
 };
 
 pub const Textures = struct {
@@ -146,10 +173,6 @@ pub const DrawBuffer = struct {
     pub fn deinit() void {
         Textures.deinit();
         list.deinit();
-    }
-
-    pub fn appendSlice(item: []const Component) void {
-        list.appendSlice(item) catch {};
     }
 
     pub fn append(item: Component) void {
