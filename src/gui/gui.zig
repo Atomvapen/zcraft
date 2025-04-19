@@ -3,29 +3,36 @@ const std = @import("std");
 const Context = @import("../Context.zig");
 const root = @import("root");
 
+pub var context: *Context = undefined;
+
+pub fn init(ctx: *Context) !void {
+    context = ctx;
+    try DrawBuffer.init();
+    try Textures.init();
+}
+
+pub fn deinit() void {
+    DrawBuffer.deinit();
+    Textures.deinit();
+}
+
 pub const Callback = struct {
     pub const Action = enum(u8) {
         play,
         exit,
         settings,
-        settingsInGame,
+        pause,
         menu,
         _,
     };
 
-    pub var context: *Context = undefined;
-
-    pub fn init(ctx: *Context) void {
-        context = ctx;
-    }
-
     pub fn run(action: Action) void {
         switch (action) {
-            .exit => context.state.current = .Exiting,
-            .play => context.state.current = .Playing,
-            .settings => context.state.current = .Settings,
-            .settingsInGame => context.state.current = .SettingsInGame,
-            .menu => context.state.current = .Menu,
+            .exit => context.state.current = .exiting,
+            .play => context.state.current = .playing,
+            .settings => context.state.current = .settings,
+            .pause => context.state.current = .pause,
+            .menu => context.state.current = .menu,
             else => unreachable,
         }
     }
@@ -55,15 +62,15 @@ pub const Component = union(enum) {
 
     pub fn render(self: Component) void {
         switch (self) {
-            .button => |b| b.render(),
-            .slider => |s| s.render(),
+            .button => |c| c.render(),
+            .slider => |c| c.render(),
             .checkBox => |c| c.render(),
-            .label => |l| l.render(),
-            .image => |i| i.render(),
-            .gradiant => |g| g.render(),
+            .label => |c| c.render(),
+            .image => |c| c.render(),
+            .gradiant => |c| c.render(),
             .crosshair => |c| c.render(),
-            .hotbar => |h| h.render(),
-            .inventory => |inv| inv.render(),
+            .hotbar => |c| c.render(),
+            .inventory => |c| c.render(),
             else => {},
         }
     }
@@ -79,24 +86,32 @@ pub const Component = union(enum) {
 
     pub fn destroy(self: Component) void {
         switch (self) {
-            .button => |b| b.destroy(),
-            .slider => |s| s.destroy(),
+            .button => |c| c.destroy(),
+            .slider => |c| c.destroy(),
             .checkBox => |c| c.destroy(),
-            .label => |l| l.destroy(),
-            .image => |i| i.destroy(),
-            .gradiant => |g| g.destroy(),
+            .label => |c| c.destroy(),
+            .image => |c| c.destroy(),
+            .gradiant => |c| c.destroy(),
             .crosshair => |c| c.destroy(),
-            .hotbar => |h| h.destroy(),
-            .inventory => |inv| inv.destroy(),
+            .hotbar => |c| c.destroy(),
+            .inventory => |c| c.destroy(),
             else => {},
         }
     }
 };
 
 pub const Window = struct {
-    pub const main = @import("windows/main.zig");
-    pub const settings = @import("windows/settings.zig");
-    pub const settingsInGame = @import("windows/settingsInGame.zig");
+    const main = @import("windows/main.zig");
+    const settings = @import("windows/settings.zig");
+    const pause = @import("windows/pause.zig");
+
+    pub fn render(ctx: *Context, kind: enum { main, settings, pause }) !void {
+        try switch (kind) {
+            .main => main.render(),
+            .settings => settings.render(ctx),
+            .pause => pause.render(ctx),
+        };
+    }
 };
 
 pub const Textures = struct {
@@ -164,14 +179,11 @@ pub const Textures = struct {
 pub const DrawBuffer = struct {
     pub var list: std.ArrayList(Component) = undefined;
 
-    pub fn init(ctx: *Context) !void {
-        try Textures.init();
+    pub fn init() !void {
         list = std.ArrayList(Component).init(root.allocator);
-        Callback.init(ctx);
     }
 
     pub fn deinit() void {
-        Textures.deinit();
         list.deinit();
     }
 

@@ -3,6 +3,8 @@ const map = @import("../map/world.zig");
 const Context = @import("../Context.zig");
 const Inventory = @import("../player/Inventory.zig");
 const vec = @import("../math/vec.zig");
+const shader = @import("../rendering/shader.zig");
+
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
@@ -40,6 +42,22 @@ pub const Player = struct {
 
     pub fn kill(self: *Self) void {
         self.stats.health = 0;
+    }
+
+    pub fn render(self: *Player) !void {
+        // Block outline
+        if (Collision.sendRayCameraTarget(self)) |hit| {
+            const pos: rl.Vector3 = vec.rlTransform(@round(hit.position), rl.Vector3);
+            rl.drawCube(pos, 1.01, 1.01, 1.01, rl.colorAlpha(rl.Color.black, 0.5));
+        }
+
+        //Player shadow
+        if (@abs((shader.lightCam.position.x + shader.lightCam.position.z) - (self.camera.position.x + self.camera.position.z)) > 50) {
+            shader.lightCam.position.x = self.camera.position.x;
+            shader.lightCam.position.z = self.camera.position.z;
+            shader.lightCam.target.x = self.camera.position.x;
+            shader.lightCam.target.z = self.camera.position.z + 0.001;
+        }
     }
 
     pub fn placeBlock(self: *Self) !void {
@@ -96,9 +114,9 @@ pub const Player = struct {
         switch (key) {
             .tab => self.inventory.open = !self.inventory.open,
             .zero, .one, .two, .three, .four, .five, .six, .seven, .eight, .nine => self.inventory.hotbar.selection = @as(u8, @intCast(@intFromEnum((key)))) - 49,
-            .f3 => ctx.settings.debug = !ctx.settings.debug,
+            .t => ctx.settings.debug = !ctx.settings.debug,
             .f11 => rl.toggleFullscreen(),
-            .escape => ctx.state.current = .SettingsInGame,
+            .escape => ctx.state.current = .pause,
             .k => @import("../rendering/shader.zig").lightCam.target.z += 0.01,
             .l => @import("../rendering/shader.zig").lightCam.target.z -= 0.01,
             else => {},

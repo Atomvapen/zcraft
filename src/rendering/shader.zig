@@ -18,11 +18,11 @@ pub var lightCam: rl.Camera3D = undefined;
 pub fn deinit() void {
     shadowMap.unload();
     shadowShader.deactivate();
+    rl.unloadShader(shadowShader);
 }
 
 pub fn init() void {
     shadowShader = rl.loadShader("res/shaders/vertShadowMap.glsl", "res/shaders/fragShadowMap.glsl") catch unreachable;
-    // shadowShader.locs[ray.SHADER_LOC_VECTOR_VIEW] = rl.getShaderLocation(shadowShader, "viewPos");
     shadowShader.locs[@intFromEnum(rl.ShaderLocationIndex.vector_view)] = rl.getShaderLocation(shadowShader, "viewPos");
 
     lightVPLoc = rl.getShaderLocation(shadowShader, "lightVP");
@@ -53,32 +53,37 @@ pub fn drawShadow(ctx: *Context) !void {
     var lightDir = rl.Vector3.normalize(rl.Vector3{ .x = lightCam.target.x - lightCam.position.x, .y = -1.0, .z = lightCam.target.z - lightCam.position.z });
     const lightDirLoc = rl.getShaderLocation(shadowShader, "lightDir");
     rl.setShaderValue(shadowShader, lightDirLoc, &lightDir, .vec3);
-
-    // rl.setShaderValue(shadowShader, shadowShader.locs[ray.SHADER_LOC_VECTOR_VIEW], &p.camera.position, .vec3);
     rl.setShaderValue(shadowShader, shadowShader.locs[@intFromEnum(rl.ShaderLocationIndex.vector_view)], &ctx.player.camera.position, .vec3);
+
+    // Start rendering to shadow map texture
     rl.beginTextureMode(shadowMap);
-    rl.clearBackground(rl.Color.ray_white);
-    //ray.rlSetCullFace(ray.RL_CULL_FACE_FRONT);
+    rl.clearBackground(rl.Color.ray_white); // Clear depth buffer
 
-    rl.beginMode3D(lightCam);
-    const lightView = rl.gl.rlGetMatrixModelview();
-    const lightProj = rl.gl.rlGetMatrixProjection();
-    try renderer.render3D(ctx);
-    rl.endMode3D();
-    rl.endTextureMode();
-    //ray.rlSetCullFace(ray.RL_CULL_FACE_BACK);
+    // Set culling mode to render front-facing polygons for the shadow map
+    rl.gl.rlSetCullFace(@intFromEnum(rl.gl.rlCullMode.rl_cull_face_front)); // Cull back faces
 
+    rl.beginMode3D(lightCam); // Begin 3D mode with the light's camera
+    const lightView = rl.gl.rlGetMatrixModelview(); // Get the light view matrix
+    const lightProj = rl.gl.rlGetMatrixProjection(); // Get the light projection matrix
+
+    // Render the world geometry in depth-only mode
+    try renderer.renderWorld(ctx);
+
+    rl.endMode3D(); // End 3D rendering
+    rl.endTextureMode(); // End render to shadow map
+
+    // Reset culling mode back to default (rendering back faces)
+    rl.gl.rlSetCullFace(@intFromEnum(rl.gl.rlCullMode.rl_cull_face_back));
+
+    // Set the view-projection matrix to the shader for shadow calculation
     const lightViewProj = rl.Matrix.multiply(lightView, lightProj);
-
     rl.setShaderValueMatrix(shadowShader, lightVPLoc, lightViewProj);
 
+    // Enable the shadow shader and bind the shadow map texture
     rl.gl.rlEnableShader(shadowShader.id);
-    // rl.Shader.activate(shadowShader);
     const slot: c_int = 10;
     rl.gl.rlActiveTextureSlot(slot);
     rl.gl.rlEnableTexture(shadowMap.depth.id);
-
-    // rl.gl.rlSetUniform(shadowMapLoc, &slot, ray.SHADER_UNIFORM_INT, 1);
     rl.gl.rlSetUniform(shadowMapLoc, &slot, @intFromEnum(rl.ShaderUniformDataType.int), 1);
 }
 
@@ -95,11 +100,10 @@ fn LoadShadowmapRenderTexture(width: u32, height: u32) rl.RenderTexture2D {
         target.depth.id = rl.gl.rlLoadTextureDepth(@intCast(width), @intCast(height), false);
         target.depth.width = @intCast(width);
         target.depth.height = @intCast(height);
-        target.depth.format = .compressed_etc2_rgb; //DEPTH_COMPONENT_24BIT?
+        target.depth.format = .uncompressed_r32; //DEPTH_COMPONENT_24BIT?
         target.depth.mipmaps = 1;
 
         // Attach depth texture to FBO
-        // rl.gl.rlFramebufferAttach(target.id, target.depth.id, ray.RL_ATTACHMENT_DEPTH, ray.RL_ATTACHMENT_TEXTURE2D, 0);
         rl.gl.rlFramebufferAttach(target.id, target.depth.id, @intFromEnum(rl.gl.rlFramebufferAttachType.rl_attachment_depth), @intFromEnum(rl.gl.rlFramebufferAttachTextureType.rl_attachment_texture2d), 0);
 
         // Check if fbo is complete with attachments (valid)

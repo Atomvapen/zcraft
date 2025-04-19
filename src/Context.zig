@@ -12,9 +12,9 @@ time: f64,
 deltatime: f64,
 
 const State = struct {
-    const GameState = enum { None, Menu, Playing, Settings, Exiting, SettingsInGame };
-    current: GameState = .Menu,
-    previous: GameState = .None,
+    const GameState = enum { none, menu, playing, settings, exiting, pause };
+    current: GameState = .menu,
+    previous: GameState = .none,
 };
 
 const Settings = struct {
@@ -44,7 +44,7 @@ pub fn destroy(self: *Self, allocator: std.mem.Allocator) void {
 
 pub fn update(self: *Self) !void {
     switch (self.state.current) {
-        .Playing => {
+        .playing => {
             self.deltatime = @floatCast(rl.getFrameTime());
             try self.player.update(self);
             map.update();

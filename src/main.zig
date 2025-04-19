@@ -31,8 +31,8 @@ pub fn main() !void {
     try blocks.init();
     defer blocks.deinit();
 
-    try gui.DrawBuffer.init(ctx);
-    defer gui.DrawBuffer.deinit();
+    try gui.init(ctx);
+    defer gui.deinit();
 
     map.Map.init();
     defer map.Map.deinit();
@@ -41,13 +41,11 @@ pub fn main() !void {
 
     renderer.init();
 
-    { // Debug block
-        // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
-        // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
-        ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);
-    }
+    //
+    debug(ctx);
+    //
 
-    while (!rl.windowShouldClose() and ctx.state.current != .Exiting) {
+    while (!rl.windowShouldClose() and ctx.state.current != .exiting) {
         try ctx.update();
 
         if (ctx.state.current != ctx.state.previous) {
@@ -55,12 +53,18 @@ pub fn main() !void {
             ctx.state.previous = ctx.state.current;
 
             switch (ctx.state.current) {
-                .Menu, .Settings, .SettingsInGame => rl.enableCursor(),
-                .Playing => rl.disableCursor(),
+                .menu, .settings, .pause => rl.enableCursor(),
+                .playing => rl.disableCursor(),
                 else => {},
             }
         }
 
-        try renderer.drawFrame(ctx);
+        try renderer.render(ctx);
     }
+}
+
+fn debug(ctx: *Context) void {
+    // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
+    // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
+    ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);
 }
