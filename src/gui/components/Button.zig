@@ -48,8 +48,8 @@ pub fn render(self: *const Self) void {
         const sourceRect: rl.Rectangle = rl.Rectangle{
             .x = 0,
             .y = 0,
-            .width = @floatFromInt(gui.Textures.button.width),
-            .height = @floatFromInt(gui.Textures.button.height),
+            .width = @floatFromInt(gui.Textures.get(.button).width),
+            .height = @floatFromInt(gui.Textures.get(.button).height),
         };
         const bodyHoverScalar: f32 = if (self.state == .hovered) 1.05 else 1.0;
         const scaledRect = rl.Rectangle{
@@ -58,7 +58,7 @@ pub fn render(self: *const Self) void {
             .width = self.pos.width * bodyHoverScalar,
             .height = self.pos.height * bodyHoverScalar,
         };
-        rl.drawTexturePro(if (self.state == .hovered) gui.Textures.buttonHovered else gui.Textures.button, sourceRect, scaledRect, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+        rl.drawTexturePro(if (self.state == .hovered) gui.Textures.get(.buttonHovered) else gui.Textures.get(.button), sourceRect, scaledRect, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
     }
 
     { //Text

@@ -9,7 +9,7 @@ pub fn render(ctx: *Context) !void {
     const screenHeight = rl.getScreenHeight();
     const centerX = @as(f32, @floatFromInt(screenWidth - 400)) / 2;
 
-    if (DrawBuffer.list.items.len == 0) {
+    if (DrawBuffer.count() == 0) {
         rl.enableCursor();
         try drawBackground();
         DrawBuffer.append(try Component.create(.gradiant, .{ .pos = .{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, .topColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, .botColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 } }));
@@ -22,13 +22,13 @@ pub fn render(ctx: *Context) !void {
 }
 
 fn drawBackground() !void {
-    const backgroundTexture = gui.Textures.grassFlat;
+    const backgroundTexture = gui.Textures.get(.grassFlat);
     const screenWidth = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
 
     // Define a desired tile size for the background
-    const tileWidth: i32 = 64; // Adjust as needed (e.g., 64px for a smaller tile)
-    const tileHeight: i32 = 64; // Adjust as needed (e.g., 64px for a smaller tile)
+    const tileWidth: i32 = 64;
+    const tileHeight: i32 = 64;
 
     // Calculate how many tiles are needed to cover the screen in both directions
     const tilesX: usize = @intCast(@divFloor(screenWidth, tileWidth) + 1);

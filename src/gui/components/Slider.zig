@@ -45,10 +45,10 @@ pub fn render(self: *Self) void {
         const sourceRect: rl.Rectangle = rl.Rectangle{
             .x = 0,
             .y = 0,
-            .width = @floatFromInt(gui.Textures.button.width),
-            .height = @floatFromInt(gui.Textures.button.height),
+            .width = @floatFromInt(gui.Textures.get(.button).width),
+            .height = @floatFromInt(gui.Textures.get(.button).height),
         };
-        rl.drawTexturePro(gui.Textures.button, sourceRect, self.pos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+        rl.drawTexturePro(gui.Textures.get(.button), sourceRect, self.pos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
     }
 
     { // Thumb
@@ -56,10 +56,10 @@ pub fn render(self: *Self) void {
         const thumbPosX: f32 = self.pos.x + (self.value.* - self.minValue) / (self.maxValue - self.minValue) * self.pos.width - self.thumbWidth / 2;
 
         // Draw the thumb (the part that the user drags)
-        const thumbRect = rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(gui.Textures.sliderThumb.width), .height = @floatFromInt(gui.Textures.sliderThumb.height) };
+        const thumbRect = rl.Rectangle{ .x = 0, .y = 0, .width = @floatFromInt(gui.Textures.get(.sliderThumb).width), .height = @floatFromInt(gui.Textures.get(.sliderThumb).height) };
         const thumbHoverScalar: f32 = if (self.state == .hovered or self.state == .dragging) 1.05 else 1.0;
         const scaledRect = rl.Rectangle{ .x = thumbPosX, .y = self.pos.y - (thumbRect.height * (thumbHoverScalar - 1.0) / 2), .width = self.thumbWidth * thumbHoverScalar, .height = thumbRect.height * thumbHoverScalar };
-        rl.drawTexturePro(if (self.state == .hovered or self.state == .dragging) gui.Textures.sliderThumbHovered else gui.Textures.sliderThumb, thumbRect, scaledRect, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
+        rl.drawTexturePro(if (self.state == .hovered or self.state == .dragging) gui.Textures.get(.sliderThumbHovered) else gui.Textures.get(.sliderThumb), thumbRect, scaledRect, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);
 
         // Draw the current value text
         var buffer: [20]u8 = undefined;

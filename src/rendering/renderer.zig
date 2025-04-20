@@ -71,7 +71,7 @@ pub fn renderWorld(ctx: *Context) !void {
 
 fn renderUI(self: *Player, ctx: *Context) !void {
     const Component = gui.Component;
-    if (DrawBuffer.list.items.len == 0) { // Refactor out of player?
+    if (DrawBuffer.count() == 0) { // Refactor out of player?
         DrawBuffer.append(try Component.create(.hotbar, .{ .ctx = ctx, .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 }, .selection = &self.inventory.hotbar.selection }));
         DrawBuffer.append(try Component.create(.crosshair, .{ .size = 10, .visible = true }));
         DrawBuffer.append(try Component.create(.inventory, .{ .ctx = ctx, .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 } }));

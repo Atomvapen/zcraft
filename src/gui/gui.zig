@@ -61,10 +61,10 @@ pub const Component = union(Tag) {
     inventory: *Inventory,
 
     pub fn create(comptime tag: Tag, args: @typeInfo(@typeInfo(Component).@"union".fields[@intFromEnum(tag)].type).pointer.child.InitArgs) !Component {
-        const field_type = @typeInfo(Component).@"union".fields[@intFromEnum(tag)].type;
-        const T = @typeInfo(field_type).pointer.child;
-        const ptr: *T = try root.allocator.create(T);
-        ptr.* = T.init(args);
+        const Field = @typeInfo(Component).@"union".fields[@intFromEnum(tag)].type;
+        const Child = @typeInfo(Field).pointer.child;
+        const ptr: *Child = try root.allocator.create(Child);
+        ptr.* = Child.init(args);
         return @unionInit(Component, @tagName(tag), ptr);
     }
 
@@ -102,69 +102,81 @@ pub const Window = struct {
 };
 
 pub const Textures = struct {
-    pub var dirtFlat: rl.Texture = undefined;
-    pub var grassFlat: rl.Texture = undefined;
+    const TextureId = enum(u8) {
+        dirtFlat,
+        grassFlat,
 
-    pub var button: rl.Texture = undefined;
-    pub var buttonHovered: rl.Texture = undefined;
+        button,
+        buttonHovered,
 
-    pub var sliderThumbHovered: rl.Texture = undefined;
-    pub var sliderThumb: rl.Texture = undefined;
+        sliderThumb,
+        sliderThumbHovered,
 
-    pub var checkBox: rl.Texture = undefined;
-    pub var checkBoxHovered: rl.Texture = undefined;
-    pub var checkBoxChecked: rl.Texture = undefined;
-    pub var checkBoxCheckedHovered: rl.Texture = undefined;
+        checkBox,
+        checkBoxHovered,
+        checkBoxChecked,
+        checkBoxCheckedHovered,
 
-    pub var slot: rl.Texture = undefined;
-    pub var slotActive: rl.Texture = undefined;
+        slot,
+        slotActive,
+        inventory,
+    };
+    const TexturePath = struct {
+        id: TextureId,
+        path: [:0]const u8,
+    };
+    var textures: [@typeInfo(TextureId).@"enum".fields.len]rl.Texture = undefined;
 
-    pub var inventory: rl.Texture = undefined;
+    const paths = [_]TexturePath{
+        //Backgrounds
+        .{ .id = .dirtFlat, .path = "assets/blocks/dirt_flat.png" },
+        .{ .id = .grassFlat, .path = "assets/blocks/grass_flat.png" },
+
+        // Slider
+        .{ .id = .sliderThumb, .path = "assets/gui/slider_thumb.png" },
+        .{ .id = .sliderThumbHovered, .path = "assets/gui/slider_thumb_hover.png" },
+
+        //Button
+        .{ .id = .button, .path = "assets/gui/button.png" },
+        .{ .id = .buttonHovered, .path = "assets/gui/button_hover.png" },
+
+        //CheckBox
+        .{ .id = .checkBox, .path = "assets/gui/checkbox.png" },
+        .{ .id = .checkBoxHovered, .path = "assets/gui/checkbox_hovered.png" },
+        .{ .id = .checkBoxChecked, .path = "assets/gui/checkbox_checked.png" },
+        .{ .id = .checkBoxCheckedHovered, .path = "assets/gui/checkbox_checked_hovered.png" },
+
+        //Inventory
+        .{ .id = .slot, .path = "assets/gui/hotbar.png" },
+        .{ .id = .slotActive, .path = "assets/gui/hotbar_active.png" },
+        .{ .id = .inventory, .path = "assets/gui/inventory.png" },
+    };
 
     pub fn init() !void {
-        Textures.dirtFlat = try rl.loadTexture("assets/blocks/dirt_flat.png");
-        Textures.grassFlat = try rl.loadTexture("assets/blocks/grass_flat.png");
-
-        Textures.sliderThumb = try rl.loadTexture("assets/gui/slider_thumb.png");
-        Textures.sliderThumbHovered = try rl.loadTexture("assets/gui/slider_thumb_hover.png");
-
-        Textures.button = try rl.loadTexture("assets/gui/button.png");
-        Textures.buttonHovered = try rl.loadTexture("assets/gui/button_hover.png");
-
-        Textures.checkBox = try rl.loadTexture("assets/gui/checkbox.png");
-        Textures.checkBoxHovered = try rl.loadTexture("assets/gui/checkbox_hovered.png");
-        Textures.checkBoxChecked = try rl.loadTexture("assets/gui/checkbox_checked.png");
-        Textures.checkBoxCheckedHovered = try rl.loadTexture("assets/gui/checkbox_checked_hovered.png");
-
-        Textures.slot = try rl.loadTexture("assets/gui/hotbar.png");
-        Textures.slotActive = try rl.loadTexture("assets/gui/hotbar_active.png");
-        Textures.inventory = try rl.loadTexture("assets/gui/inventory.png");
+        for (paths) |p| {
+            textures[@intFromEnum(p.id)] = try rl.loadTexture(p.path);
+        }
     }
 
     pub fn deinit() void {
-        rl.unloadTexture(Textures.dirtFlat);
-        rl.unloadTexture(Textures.grassFlat);
+        for (textures) |tex| {
+            rl.unloadTexture(tex);
+        }
+    }
 
-        rl.unloadTexture(Textures.sliderThumb);
-        rl.unloadTexture(Textures.sliderThumbHovered);
-
-        rl.unloadTexture(Textures.button);
-        rl.unloadTexture(Textures.buttonHovered);
-
-        rl.unloadTexture(Textures.checkBox);
-        rl.unloadTexture(Textures.checkBoxHovered);
-        rl.unloadTexture(Textures.checkBoxChecked);
-        rl.unloadTexture(Textures.checkBoxCheckedHovered);
-
-        rl.unloadTexture(Textures.slot);
-        rl.unloadTexture(Textures.slotActive);
-
-        rl.unloadTexture(Textures.inventory);
+    pub fn get(id: TextureId) rl.Texture {
+        const index = @intFromEnum(id);
+        std.debug.assert(index < textures.len);
+        return textures[index];
     }
 };
 
 pub const DrawBuffer = struct {
-    pub var list: std.ArrayList(Component) = undefined;
+    var list: std.ArrayList(Component) = undefined;
+
+    pub inline fn count() usize {
+        return list.items.len;
+    }
 
     pub fn init() !void {
         list = std.ArrayList(Component).init(root.allocator);

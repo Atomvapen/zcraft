@@ -38,14 +38,14 @@ pub fn render(self: *Self) void {
     const sourceRect: rl.Rectangle = rl.Rectangle{
         .x = 0,
         .y = 0,
-        .width = @floatFromInt(gui.Textures.checkBox.width),
-        .height = @floatFromInt(gui.Textures.checkBox.height),
+        .width = @floatFromInt(gui.Textures.get(.checkBox).width),
+        .height = @floatFromInt(gui.Textures.get(.checkBox).height),
     };
 
     const texture = switch (self.state) {
-        .disabled => gui.Textures.checkBox,
-        .default, .pressed => if (self.value.*) gui.Textures.checkBoxChecked else gui.Textures.checkBox,
-        .hovered => if (self.value.*) gui.Textures.checkBoxCheckedHovered else gui.Textures.checkBoxHovered,
+        .disabled => gui.Textures.get(.checkBox),
+        .default, .pressed => if (self.value.*) gui.Textures.get(.checkBoxChecked) else gui.Textures.get(.checkBox),
+        .hovered => if (self.value.*) gui.Textures.get(.checkBoxCheckedHovered) else gui.Textures.get(.checkBoxHovered),
     };
 
     rl.drawTexturePro(texture, sourceRect, self.pos, rl.Vector2{ .x = 0, .y = 0 }, 0, rl.Color.white);

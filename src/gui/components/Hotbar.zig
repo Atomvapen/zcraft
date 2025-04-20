@@ -32,8 +32,8 @@ pub fn render(self: *Self) void {
 
     const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
     const screenHeight: f32 = @floatFromInt(rl.getScreenHeight());
-    const slotWidth: f32 = @floatFromInt(gui.Textures.slot.width);
-    const slotHeight: f32 = @floatFromInt(gui.Textures.slot.height);
+    const slotWidth: f32 = @floatFromInt(gui.Textures.get(.slot).width);
+    const slotHeight: f32 = @floatFromInt(gui.Textures.get(.slot).height);
 
     const sourceRect = rl.Rectangle{
         .x = 0,
@@ -63,7 +63,7 @@ pub fn render(self: *Self) void {
         };
 
         rl.drawTexturePro(
-            if (isSelected) gui.Textures.slotActive else gui.Textures.slot,
+            if (isSelected) gui.Textures.get(.slotActive) else gui.Textures.get(.slot),
             sourceRect,
             destRect,
             rl.Vector2{ .x = 0, .y = 0 },

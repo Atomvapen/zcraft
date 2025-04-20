@@ -25,8 +25,8 @@ pub fn render(self: *Self) void {
 
     const screenWidth: f32 = @floatFromInt(rl.getScreenWidth());
     const screenHeight: f32 = @floatFromInt(rl.getScreenHeight());
-    const inventoryWidth: f32 = @floatFromInt(gui.Textures.inventory.width);
-    const inventoryHeight: f32 = @floatFromInt(gui.Textures.inventory.height);
+    const inventoryWidth: f32 = @floatFromInt(gui.Textures.get(.inventory).width);
+    const inventoryHeight: f32 = @floatFromInt(gui.Textures.get(.inventory).height);
 
     const sourceRect = rl.Rectangle{
         .x = 0,
@@ -52,7 +52,7 @@ pub fn render(self: *Self) void {
     self.pos = destRect;
 
     rl.drawTexturePro(
-        gui.Textures.inventory,
+        gui.Textures.get(.inventory),
         sourceRect,
         destRect,
         rl.Vector2{ .x = 0, .y = 0 },
