@@ -18,23 +18,42 @@ value: *f32,
 thumbWidth: f32,
 state: State = .default,
 
-pub fn create(pos: rl.Rectangle, minValue: f32, maxValue: f32, value: *f32, thumbWidth: f32) !*Self {
-    const slider: *Self = try root.allocator.create(Self);
+pub const InitArgs = struct {
+    pos: rl.Rectangle,
+    minValue: f32,
+    maxValue: f32,
+    value: *f32,
+    thumbWidth: f32,
+};
 
-    slider.* = .{
-        .pos = pos,
-        .minValue = minValue,
-        .maxValue = maxValue,
-        .value = value,
-        .thumbWidth = thumbWidth,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .pos = args.pos,
+        .minValue = args.minValue,
+        .maxValue = args.maxValue,
+        .value = args.value,
+        .thumbWidth = args.thumbWidth,
+        .state = .default,
     };
-
-    return slider;
 }
 
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
-}
+// pub fn create(pos: rl.Rectangle, minValue: f32, maxValue: f32, value: *f32, thumbWidth: f32) !*Self {
+//     const slider: *Self = try root.allocator.create(Self);
+
+//     slider.* = .{
+//         .pos = pos,
+//         .minValue = minValue,
+//         .maxValue = maxValue,
+//         .value = value,
+//         .thumbWidth = thumbWidth,
+//     };
+
+//     return slider;
+// }
+
+// pub fn destroy(self: *const Self) void {
+//     root.allocator.destroy(self);
+// }
 
 pub fn render(self: *Self) void {
     { // Track

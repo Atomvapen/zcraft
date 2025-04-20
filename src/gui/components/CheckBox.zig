@@ -11,27 +11,27 @@ const State = enum {
     pressed,
 };
 
+pub const InitArgs = struct {
+    pos: rl.Rectangle,
+    text: [:0]const u8,
+    fontSize: i32,
+    value: *bool,
+};
+
 pos: rl.Rectangle,
 text: [:0]const u8,
 fontSize: i32,
-value: *bool = undefined,
-state: State = .default,
+value: *bool,
+state: State,
 
-pub fn create(text: [:0]const u8, fontSize: i32, pos: rl.Rectangle, value: *bool) !*Self {
-    const checkBox: *Self = try root.allocator.create(Self);
-
-    checkBox.* = .{
-        .pos = pos,
-        .text = text,
-        .fontSize = fontSize,
-        .value = value,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .pos = args.pos,
+        .text = args.text,
+        .fontSize = args.fontSize,
+        .value = args.value,
+        .state = .default,
     };
-
-    return checkBox;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

@@ -100,7 +100,7 @@ fn LoadShadowmapRenderTexture(width: u32, height: u32) rl.RenderTexture2D {
         target.depth.id = rl.gl.rlLoadTextureDepth(@intCast(width), @intCast(height), false);
         target.depth.width = @intCast(width);
         target.depth.height = @intCast(height);
-        target.depth.format = .uncompressed_r32; //DEPTH_COMPONENT_24BIT?
+        target.depth.format = .uncompressed_r32;
         target.depth.mipmaps = 1;
 
         // Attach depth texture to FBO

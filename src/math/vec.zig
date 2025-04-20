@@ -94,8 +94,7 @@ pub inline fn distanceSquared(a: anytype, b: @TypeOf(a)) @typeInfo(@TypeOf(a)).v
 }
 
 pub inline fn reflect(v: anytype, n: @TypeOf(v)) @TypeOf(v) {
-    const dotProduct = dot(v * n);
-    return v - (n * (2 * dotProduct));
+    return v - (n * (2 * dot(v * n)));
 }
 
 pub inline fn scale(v: anytype, scalar: @typeInfo(@TypeOf(v)).vector.child) @TypeOf(v) {

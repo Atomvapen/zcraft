@@ -2,27 +2,21 @@ const Self = @This();
 const root = @import("root");
 const rl = @import("raylib");
 const gui = @import("../gui.zig");
-// const blocks = @import("../../map/blocks.zig");
-// const std = @import("std");
 const Context = @import("../../Context.zig");
-// const Inventory = @import("../../player/Inventory.zig");
+
+pub const InitArgs = struct {
+    pos: rl.Rectangle,
+    ctx: *Context,
+};
 
 pos: rl.Rectangle,
 ctx: *Context,
 
-pub fn create(ctx: *Context) !*Self {
-    const invetory: *Self = try root.allocator.create(Self);
-
-    invetory.* = .{
-        .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
-        .ctx = ctx,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .pos = args.pos,
+        .ctx = args.ctx,
     };
-
-    return invetory;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

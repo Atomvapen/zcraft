@@ -38,7 +38,8 @@ pub const Callback = struct {
     }
 };
 
-pub const Component = union(enum) {
+pub const Component = union(Tag) {
+    const Tag = enum { button, slider, checkBox, label, image, gradiant, crosshair, hotbar, inventory };
     const Button = @import("components/Button.zig");
     const Slider = @import("components/Slider.zig");
     const CheckBox = @import("components/CheckBox.zig");
@@ -58,44 +59,30 @@ pub const Component = union(enum) {
     crosshair: *Crosshair,
     hotbar: *Hotbar,
     inventory: *Inventory,
-    _,
+
+    pub fn create(comptime tag: Tag, args: @typeInfo(@typeInfo(Component).@"union".fields[@intFromEnum(tag)].type).pointer.child.InitArgs) !Component {
+        const field_type = @typeInfo(Component).@"union".fields[@intFromEnum(tag)].type;
+        const T = @typeInfo(field_type).pointer.child;
+        const ptr = try root.allocator.create(T);
+        ptr.* = T.init(args);
+        return @unionInit(Component, @tagName(tag), ptr);
+    }
+
+    pub fn destroy(self: Component) void {
+        switch (self) {
+            inline else => |c| root.allocator.destroy(c),
+        }
+    }
 
     pub fn render(self: Component) void {
         switch (self) {
-            .button => |c| c.render(),
-            .slider => |c| c.render(),
-            .checkBox => |c| c.render(),
-            .label => |c| c.render(),
-            .image => |c| c.render(),
-            .gradiant => |c| c.render(),
-            .crosshair => |c| c.render(),
-            .hotbar => |c| c.render(),
-            .inventory => |c| c.render(),
-            else => {},
+            inline else => |c| if (@hasDecl(@TypeOf(c.*), "render")) c.render(),
         }
     }
 
     pub fn update(self: Component) void {
         switch (self) {
-            .button => |b| b.update(),
-            .slider => |s| s.update(),
-            .checkBox => |c| c.update(),
-            else => {},
-        }
-    }
-
-    pub fn destroy(self: Component) void {
-        switch (self) {
-            .button => |c| c.destroy(),
-            .slider => |c| c.destroy(),
-            .checkBox => |c| c.destroy(),
-            .label => |c| c.destroy(),
-            .image => |c| c.destroy(),
-            .gradiant => |c| c.destroy(),
-            .crosshair => |c| c.destroy(),
-            .hotbar => |c| c.destroy(),
-            .inventory => |c| c.destroy(),
-            else => {},
+            inline else => |c| if (@hasDecl(@TypeOf(c.*), "update")) c.update(),
         }
     }
 };
@@ -206,3 +193,10 @@ pub const DrawBuffer = struct {
         list.clearRetainingCapacity();
     }
 };
+
+pub fn setCursorVisibility(ctx: *Context) void {
+    if (ctx.player.inventory.open != ctx.player.cursorEnabled) {
+        ctx.player.cursorEnabled = ctx.player.inventory.open;
+        if (ctx.player.inventory.open) rl.enableCursor() else rl.disableCursor();
+    }
+}

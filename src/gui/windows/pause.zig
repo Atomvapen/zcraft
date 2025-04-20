@@ -2,20 +2,22 @@ const rl = @import("raylib");
 const Context = @import("../../Context.zig");
 const gui = @import("../gui.zig");
 const Component = gui.Component;
+const DrawBuffer = gui.DrawBuffer;
 
 pub fn render(ctx: *Context) !void {
     const screenWidth: i32 = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
+    const centerX = @as(f32, @floatFromInt(screenWidth - 400)) / 2;
 
-    if (gui.DrawBuffer.list.items.len == 0) {
+    if (DrawBuffer.list.items.len == 0) {
         rl.enableCursor();
         try drawBackground();
-        gui.DrawBuffer.append(Component{ .gradiant = try .create(.{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }) });
-        gui.DrawBuffer.append(Component{ .button = try .create("Back", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
-        gui.DrawBuffer.append(Component{ .button = try .create("Exit", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = 400, .height = 50 }, .exit) });
-        gui.DrawBuffer.append(Component{ .slider = try .create(.{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 390, .width = 400, .height = 50 }, 0, 100, &ctx.settings.volume, 40) });
-        gui.DrawBuffer.append(Component{ .checkBox = try .create("Safe", 20, .{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 460, .width = 50, .height = 50 }, &ctx.settings.reverseScrolling) });
-        gui.DrawBuffer.append(Component{ .slider = try .create(.{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 520, .width = 400, .height = 50 }, 1, 10, &ctx.settings.renderDistance, 40) });
+        DrawBuffer.append(try Component.create(.gradiant, .{ .pos = .{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, .topColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, .botColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 } }));
+        DrawBuffer.append(try Component.create(.button, .{ .text = "Back", .fontSize = 20, .alignment = .center, .pos = .{ .x = centerX, .y = 250, .width = 400, .height = 50 }, .action = .play }));
+        DrawBuffer.append(try Component.create(.button, .{ .text = "Exit", .fontSize = 20, .alignment = .center, .pos = .{ .x = centerX, .y = 320, .width = 400, .height = 50 }, .action = .exit }));
+        DrawBuffer.append(try Component.create(.slider, .{ .pos = .{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 390, .width = 400, .height = 50 }, .minValue = 0, .maxValue = 100, .value = &ctx.settings.volume, .thumbWidth = 40 }));
+        DrawBuffer.append(try Component.create(.checkBox, .{ .text = "Reverse Scrolling", .fontSize = 20, .pos = .{ .x = centerX, .y = 460, .width = 50, .height = 50 }, .value = &ctx.settings.reverseScrolling }));
+        DrawBuffer.append(try Component.create(.slider, .{ .pos = .{ .x = (@as(f32, @floatFromInt(rl.getScreenWidth() - 400))) / 2, .y = 520, .width = 400, .height = 50 }, .minValue = 1, .maxValue = 10, .value = &ctx.settings.renderDistance, .thumbWidth = 40 }));
     }
 }
 
@@ -41,8 +43,7 @@ fn drawBackground() !void {
                 .width = @as(f32, @floatFromInt(tileWidth)),
                 .height = @as(f32, @floatFromInt(tileHeight)),
             };
-
-            gui.DrawBuffer.append(.{ .image = try .create(destRect, backgroundTexture) });
+            DrawBuffer.append(try Component.create(.image, .{ .pos = destRect, .texture = backgroundTexture }));
         }
     }
 }

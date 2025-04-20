@@ -22,9 +22,6 @@ pub fn main() !void {
     defer icon.unload();
     icon.useAsWindowIcon();
 
-    //ray.SetTargetFPS(120);
-    rl.setExitKey(.f1);
-
     shader.init();
     defer shader.deinit();
 
@@ -64,6 +61,7 @@ pub fn main() !void {
 }
 
 fn debug(ctx: *Context) void {
+    rl.setExitKey(.f1);
     // ctx.player.hotbar.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 });
     // ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3, 0 }, 0);
     ctx.player.inventory.setRow(.{ 1, 2, 3, 4, 5, 6, 1, 2, 3 }, 0);

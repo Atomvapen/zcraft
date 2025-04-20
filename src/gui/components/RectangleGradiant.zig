@@ -10,24 +10,23 @@ const State = enum {
 };
 
 pos: rl.Rectangle,
-state: State = .default,
+state: State,
 topColor: rl.Color,
 botColor: rl.Color,
 
-pub fn create(pos: rl.Rectangle, topColor: rl.Color, botColor: rl.Color) !*Self {
-    const gradiant: *Self = try root.allocator.create(Self);
+pub const InitArgs = struct {
+    pos: rl.Rectangle,
+    topColor: rl.Color,
+    botColor: rl.Color,
+};
 
-    gradiant.* = .{
-        .pos = pos,
-        .topColor = topColor,
-        .botColor = botColor,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .pos = args.pos,
+        .topColor = args.topColor,
+        .botColor = args.botColor,
+        .state = .default,
     };
-
-    return gradiant;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *const Self) void {

@@ -4,21 +4,19 @@ const rl = @import("raylib");
 const gui = @import("../gui.zig");
 const std = @import("std");
 
-visible: bool = true,
+pub const InitArgs = struct {
+    visible: bool,
+    size: i32,
+};
+
+visible: bool,
 size: i32,
 
-pub fn create(size: i32) !*Self {
-    const crosshair: *Self = try root.allocator.create(Self);
-
-    crosshair.* = .{
-        .size = size,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .size = args.size,
+        .visible = args.visible,
     };
-
-    return crosshair;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

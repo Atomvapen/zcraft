@@ -2,20 +2,22 @@ const rl = @import("raylib");
 const root = @import("root");
 const gui = @import("../gui.zig");
 const Component = gui.Component;
+const DrawBuffer = gui.DrawBuffer;
 
 pub fn render() !void {
     const screenWidth: i32 = rl.getScreenWidth();
     const screenHeight = rl.getScreenHeight();
+    const centerX = @as(f32, @floatFromInt(screenWidth - 400)) / 2;
 
-    if (gui.DrawBuffer.list.items.len == 0) {
+    if (DrawBuffer.list.items.len == 0) {
         rl.enableCursor();
         try drawBackground();
         try drawTitle();
-        gui.DrawBuffer.append(Component{ .gradiant = try .create(.{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 }) });
-        gui.DrawBuffer.append(Component{ .button = try .create("Play", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 250, .width = 400, .height = 50 }, .play) });
-        gui.DrawBuffer.append(Component{ .button = try .create("Settings", 20, .center, .{ .x = (@as(f32, @floatFromInt(screenWidth - 400))) / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .settings) });
-        gui.DrawBuffer.append(Component{ .button = try .create("Exit", 20, .center, .{ .x = ((@as(f32, @floatFromInt(screenWidth - 400))) / 2) + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .exit) });
-        gui.DrawBuffer.append(Component{ .label = try .create(.{ .x = 10, .y = @floatFromInt(screenHeight - 20), .width = 0, .height = 0 }, "zcraft 0.1.0", 25, .left, rl.Color.ray_white) });
+        DrawBuffer.append(try Component.create(.gradiant, .{ .pos = .{ .x = 0, .y = 0, .width = @floatFromInt(screenWidth), .height = @floatFromInt(screenHeight) }, .topColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 0 }, .botColor = rl.Color{ .r = 0, .g = 0, .b = 0, .a = 200 } }));
+        DrawBuffer.append(try Component.create(.button, .{ .text = "Play", .fontSize = 20, .alignment = .center, .pos = .{ .x = centerX, .y = 250, .width = 400, .height = 50 }, .action = .play }));
+        DrawBuffer.append(try Component.create(.button, .{ .text = "Settings", .fontSize = 20, .alignment = .center, .pos = .{ .x = centerX, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .action = .settings }));
+        DrawBuffer.append(try Component.create(.button, .{ .text = "Exit", .fontSize = 20, .alignment = .center, .pos = .{ .x = centerX + 20 + 400 / 2, .y = 320, .width = (400 - 40) / 2, .height = 50 }, .action = .exit }));
+        DrawBuffer.append(try Component.create(.label, .{ .text = "zcraft 0.1.0", .fontSize = 12, .alignment = .left, .pos = .{ .x = 10, .y = @floatFromInt(screenHeight - 20), .width = 0, .height = 0 }, .color = rl.Color.ray_white }));
     }
 }
 
@@ -28,10 +30,9 @@ fn drawTitle() !void {
     const pos = rl.Vector2{ .x = @as(f32, @floatFromInt(screenWidth - width)) / 2, .y = 100 };
 
     for (0..7) |i| {
-        gui.DrawBuffer.append(Component{ .label = try .create(.{ .x = pos.x + @as(f32, @floatFromInt(i)), .y = pos.y + @as(f32, @floatFromInt(i)), .width = 0, .height = 0 }, text, size, .left, rl.Color.dark_gray) });
+        DrawBuffer.append(try Component.create(.label, .{ .text = text, .fontSize = size, .alignment = .left, .pos = .{ .x = pos.x + @as(f32, @floatFromInt(i)), .y = pos.y + @as(f32, @floatFromInt(i)), .width = 0, .height = 0 }, .color = rl.Color.dark_gray }));
     }
-
-    gui.DrawBuffer.append(Component{ .label = try .create(.{ .x = pos.x, .y = pos.y, .width = 0, .height = 0 }, text, size, .left, rl.Color.black) });
+    DrawBuffer.append(try Component.create(.label, .{ .text = text, .fontSize = size, .alignment = .left, .pos = .{ .x = pos.x, .y = pos.y, .width = 0, .height = 0 }, .color = rl.Color.black }));
 }
 
 fn drawBackground() !void {
@@ -56,8 +57,7 @@ fn drawBackground() !void {
                 .width = @as(f32, @floatFromInt(tileWidth)),
                 .height = @as(f32, @floatFromInt(tileHeight)),
             };
-
-            gui.DrawBuffer.append(.{ .image = try .create(destRect, backgroundTexture) });
+            DrawBuffer.append(try Component.create(.image, .{ .pos = destRect, .texture = backgroundTexture }));
         }
     }
 }

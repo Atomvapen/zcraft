@@ -9,23 +9,21 @@ const State = enum {
     default,
 };
 
+pub const InitArgs = struct {
+    pos: rl.Rectangle,
+    texture: rl.Texture,
+};
+
 pos: rl.Rectangle,
-state: State = .default,
 texture: rl.Texture,
+state: State = .default,
 
-pub fn create(pos: rl.Rectangle, texture: rl.Texture) !*Self {
-    const image: *Self = try root.allocator.create(Self);
-
-    image.* = .{
-        .pos = pos,
-        .texture = texture,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .pos = args.pos,
+        .texture = args.texture,
+        .state = .default,
     };
-
-    return image;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *const Self) void {

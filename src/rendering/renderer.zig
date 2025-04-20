@@ -4,6 +4,7 @@ const Player = @import("../player/player.zig").Player;
 const rl = @import("raylib");
 const shader = @import("shader.zig");
 const gui = @import("../gui/gui.zig");
+const DrawBuffer = gui.DrawBuffer;
 
 pub fn init() void {
     rl.gl.rlDisableBackfaceCulling();
@@ -33,16 +34,9 @@ pub fn render(ctx: *Context) !void {
     gui.DrawBuffer.update();
 }
 
-pub fn setCursorVisibility(ctx: *Context) void {
-    if (ctx.player.inventory.open != ctx.player.cursorEnabled) {
-        ctx.player.cursorEnabled = ctx.player.inventory.open;
-        if (ctx.player.inventory.open) rl.enableCursor() else rl.disableCursor();
-    }
-}
-
-pub fn renderGame(ctx: *Context) !void {
+fn renderGame(ctx: *Context) !void {
     if (map.created != true) map.created = true;
-    setCursorVisibility(ctx);
+    gui.setCursorVisibility(ctx);
 
     // Clear screen buffers
     rl.gl.rlClearScreenBuffers();
@@ -74,12 +68,12 @@ pub fn renderWorld(ctx: *Context) !void {
     try ctx.player.render();
 }
 
-pub fn renderUI(self: *Player, ctx: *Context) !void {
+fn renderUI(self: *Player, ctx: *Context) !void {
     const Component = gui.Component;
-    if (gui.DrawBuffer.list.items.len == 0) { // Refactor out of player?
-        gui.DrawBuffer.append(Component{ .hotbar = try .create(&self.inventory.hotbar.selection, ctx) });
-        gui.DrawBuffer.append(Component{ .crosshair = try .create(10) });
-        gui.DrawBuffer.append(Component{ .inventory = try .create(ctx) });
+    if (DrawBuffer.list.items.len == 0) { // Refactor out of player?
+        DrawBuffer.append(try Component.create(.hotbar, .{ .ctx = ctx, .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 }, .selection = &self.inventory.hotbar.selection }));
+        DrawBuffer.append(try Component.create(.crosshair, .{ .size = 10, .visible = true }));
+        DrawBuffer.append(try Component.create(.inventory, .{ .ctx = ctx, .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 } }));
     }
     if (ctx.settings.debug) rl.drawFPS(100, 100);
 }

@@ -6,24 +6,22 @@ const blocks = @import("../../map/blocks.zig");
 const std = @import("std");
 const Context = @import("../../Context.zig");
 
+pub const InitArgs = struct {
+    selection: *u8,
+    pos: rl.Rectangle,
+    ctx: *Context,
+};
+
 selection: *u8,
 pos: rl.Rectangle,
 ctx: *Context,
 
-pub fn create(selection: *u8, ctx: *Context) !*Self {
-    const slot: *Self = try root.allocator.create(Self);
-
-    slot.* = .{
-        .pos = .{ .x = 0, .y = 0, .width = 0, .height = 0 },
-        .selection = selection,
-        .ctx = ctx,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .selection = args.selection,
+        .pos = args.pos,
+        .ctx = args.ctx,
     };
-
-    return slot;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *Self) void {

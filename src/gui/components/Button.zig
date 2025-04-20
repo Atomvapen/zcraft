@@ -17,29 +17,30 @@ const State = enum {
     pressed,
 };
 
+pub const InitArgs = struct {
+    text: [:0]const u8,
+    fontSize: i32,
+    alignment: Alignment,
+    pos: rl.Rectangle,
+    action: gui.Callback.Action,
+};
+
 pos: rl.Rectangle,
 text: [:0]const u8,
 fontSize: i32,
-action: gui.Callback.Action = undefined,
-alignment: Alignment = Alignment.center,
-state: State = .default,
+action: gui.Callback.Action,
+alignment: Alignment,
+state: State,
 
-pub fn create(text: [:0]const u8, fontSize: i32, alignment: Alignment, pos: rl.Rectangle, action: gui.Callback.Action) !*Self {
-    const button: *Self = try root.allocator.create(Self);
-
-    button.* = .{
-        .pos = pos,
-        .text = text,
-        .fontSize = fontSize,
-        .action = action,
-        .alignment = alignment,
+pub fn init(args: InitArgs) Self {
+    return Self{
+        .pos = args.pos,
+        .text = args.text,
+        .fontSize = args.fontSize,
+        .action = args.action,
+        .alignment = args.alignment,
+        .state = .default,
     };
-
-    return button;
-}
-
-pub fn destroy(self: *const Self) void {
-    root.allocator.destroy(self);
 }
 
 pub fn render(self: *const Self) void {
