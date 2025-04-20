@@ -17,6 +17,7 @@ maxValue: f32,
 value: *f32,
 thumbWidth: f32,
 state: State = .default,
+step: f32,
 
 pub const InitArgs = struct {
     pos: rl.Rectangle,
@@ -24,6 +25,7 @@ pub const InitArgs = struct {
     maxValue: f32,
     value: *f32,
     thumbWidth: f32,
+    step: f32,
 };
 
 pub fn init(args: InitArgs) Self {
@@ -33,27 +35,10 @@ pub fn init(args: InitArgs) Self {
         .maxValue = args.maxValue,
         .value = args.value,
         .thumbWidth = args.thumbWidth,
+        .step = args.step,
         .state = .default,
     };
 }
-
-// pub fn create(pos: rl.Rectangle, minValue: f32, maxValue: f32, value: *f32, thumbWidth: f32) !*Self {
-//     const slider: *Self = try root.allocator.create(Self);
-
-//     slider.* = .{
-//         .pos = pos,
-//         .minValue = minValue,
-//         .maxValue = maxValue,
-//         .value = value,
-//         .thumbWidth = thumbWidth,
-//     };
-
-//     return slider;
-// }
-
-// pub fn destroy(self: *const Self) void {
-//     root.allocator.destroy(self);
-// }
 
 pub fn render(self: *Self) void {
     { // Track
@@ -96,8 +81,14 @@ pub fn update(self: *Self) void {
 
     if (self.state == .dragging) {
         const newThumbPosX = mousePos.x - self.pos.x;
+        // Calculate the new value
         self.value.* = self.minValue + newThumbPosX / self.pos.width * (self.maxValue - self.minValue);
-        self.value.* = @min(self.maxValue, @max(self.minValue, self.value.*)); // Clamp value to [minValue, maxValue]
+
+        // Snap the value to the nearest step
+        if (self.step != 0.0) self.value.* = @round(self.value.* / self.step) * self.step;
+
+        // Clamp value to [minValue, maxValue]
+        self.value.* = @min(self.maxValue, @max(self.minValue, self.value.*));
     }
 
     if (rl.isMouseButtonReleased(.left)) self.state = .default;

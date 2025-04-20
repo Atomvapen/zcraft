@@ -32,6 +32,7 @@ pub fn render(ctx: *Context) !void {
     };
 
     gui.DrawBuffer.update();
+    gui.DrawBuffer.render();
 }
 
 fn renderGame(ctx: *Context) !void {

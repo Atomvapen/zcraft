@@ -63,7 +63,7 @@ pub const Component = union(Tag) {
     pub fn create(comptime tag: Tag, args: @typeInfo(@typeInfo(Component).@"union".fields[@intFromEnum(tag)].type).pointer.child.InitArgs) !Component {
         const field_type = @typeInfo(Component).@"union".fields[@intFromEnum(tag)].type;
         const T = @typeInfo(field_type).pointer.child;
-        const ptr = try root.allocator.create(T);
+        const ptr: *T = try root.allocator.create(T);
         ptr.* = T.init(args);
         return @unionInit(Component, @tagName(tag), ptr);
     }
@@ -179,17 +179,15 @@ pub const DrawBuffer = struct {
     }
 
     pub fn update() void {
-        for (list.items) |item| {
-            item.update();
-            item.render();
-        }
+        for (list.items) |item| item.update();
+    }
+
+    pub fn render() void {
+        for (list.items) |item| item.render();
     }
 
     pub fn clear() void {
-        for (list.items) |item| {
-            item.destroy();
-        }
-
+        for (list.items) |item| item.destroy();
         list.clearRetainingCapacity();
     }
 };
